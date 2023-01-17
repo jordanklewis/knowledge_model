@@ -24,45 +24,117 @@ class EmployeeAgent(mesa.Agent):
         self.busy = False
 
         task_level = int(self.exp * model.innovation_rate)
-        task = np.random.normal(model.dept_know[self.dept]['mu'],
+        self.task = np.random.normal(model.dept_know[self.dept]['mu'],
                                    model.dept_know[self.dept]['sigma'],
                                    task_level).astype(int)
-        task[task>=model.know_cat_ct/2] -= model.know_cat_ct
-        task[task<-model.know_cat_ct/2] += model.know_cat_ct
+        self.task[self.task>=model.know_cat_ct/2] -= model.know_cat_ct
+        self.task[self.task<-model.know_cat_ct/2] += model.know_cat_ct
 
-        c_t = Counter(task)
-        c_k = Counter(self.knowledge)
-        to_learn = list((c_t - c_k).elements()).sort()
-
+        c_t = Counter(self.task)            # counter task
+        c_k = Counter(self.knowledge)       # counter knowledge
+        c_t_l = c_t - c_k                   # counter to learn
 
         # plot employee task
         plt.figure(figsize=(10,6))
-        plt.hist(know,
-                 bins=np.arange(model.dept_know[self.dept]['dist'].min()-0.5,
-                                model.dept_know[self.dept]['dist'].max()+0.5),
+        plt.hist(self.knowledge,
+                 bins=np.arange(model.comp_know.min()-0.5,
+                                model.comp_know.max()+0.5),
                   color='red', alpha =0.5, label='Employee')
-        plt.hist(task,
-                 bins=np.arange(model.dept_know[self.dept]['dist'].min()-0.5,
-                                model.dept_know[self.dept]['dist'].max()+0.5),
+        plt.hist(self.task,
+                 bins=np.arange(model.comp_know.min()-0.5,
+                                model.comp_know.max()+0.5),
                   color='black', alpha =0.5, label='Task')
         plt.hist(model.comp_know,
                  bins=np.arange(model.comp_know.min()-0.5,
                                 model.comp_know.max()+0.5),
                   color='black', alpha =1, label='Company', histtype='step')
         plt.hist(model.dept_know[self.dept]['dist'],
-                 bins=np.arange(model.dept_know[self.dept]['dist'].min()-0.5,
-                                model.dept_know[self.dept]['dist'].max()+0.5),
+                 bins=np.arange(model.comp_know.min()-0.5,
+                                model.comp_know.max()+0.5),
                   color='blue', alpha =1, label='Dept', histtype='step')
         plt.legend()
         plt.title(self.name + ' [' + self.dept
                   + ' Exp: ' + str(self.exp) + ']\n'
-                  + 'Needed Knowledge: ' + str(len(to_learn)))
+                  + 'Needed Knowledge: ' + str(len(list(c_t_l.elements()))))
         plt.xlabel('Knowledge Categories')
         plt.ylabel('Knowledge Quantity')
         plt.show()
         
         # generate the learning path for the employee to find all needed knowledge without help
 
+        # generate a normal distribution for learning to the target level
+        # learning to a deisred level is not a linear path. This is simulated as a 
+        # normal distribution of knowledge centered around the target knowledge
+        c_learn_path = Counter()
+        for cat in c_t_l.keys():
+            new_learn = np.array([]).astype(int)
+            mu_learn = cat # mu is target knowledge
+            sigma_learn = 1 # sigma is randomness in learning
+            needed_know = c_t[cat]
+            while True: # while desired knowledge has not been attained...
+                rand_learn = np.random.normal(mu_learn, sigma_learn, 1).astype(int)
+                new_learn = np.concatenate([new_learn, rand_learn])
+                learned_know = np.count_nonzero(new_learn==mu_learn)
+                if learned_know == needed_know: # then knowledge has been attained
+                    # plot employee task
+                    # plt.figure(figsize=(10,6))
+                    # plt.hist(self.knowledge,
+                    #          bins=np.arange(model.comp_know.min()-0.5,
+                    #                         model.comp_know.max()+0.5),
+                    #          color='red', alpha =0.5, label='Employee')
+                    # plt.hist(self.task,
+                    #           bins=np.arange(model.comp_know.min()-0.5,
+                    #                         model.comp_know.max()+0.5),
+                    #           color='black', alpha=1, label='Task', histtype='step')
+                    # plt.hist(new_learn,
+                    #          bins=np.arange(model.comp_know.min()-0.5,
+                    #                         model.comp_know.max()+0.5), 
+                    #          color='blue', alpha = 0.5, edgecolor='black',
+                    #          label='Research')
+                    # plt.legend()
+                    # plt.title(self.name + ' [' + self.dept
+                    #           + ' Exp: ' + str(self.exp) + ']\n'
+                    #           + 'Target Research: ' + str(cat)
+                    #           + '    Target Level: ' + str(needed_know))
+                    # plt.xlabel('Knowledge Categories')
+                    # plt.ylabel('Knowledge Quantity')
+                    # plt.grid()
+                    # plt.show()
+            
+                    # subtract the existing knowledge from the learning distribution
+                    c_l = Counter(new_learn) # counter learn
+
+                    # new knowledge is knowledge that you didn't already know
+                    # and knowledge that you did't just find out on the learning path
+                    c_n_k = c_l - c_k - c_learn_path # counter new knowledge
+
+                    # add new knowledge to the learning path
+                    c_learn_path = c_n_k + c_learn_path
+                    break
+        
+        plt.figure(figsize=(10,6))
+        plt.hist(list((c_k + c_learn_path).elements()),
+                 bins=np.arange(model.comp_know.min()-0.5,
+                                model.comp_know.max()+0.5),
+                 color='red', alpha =0.5, label='Know Post Task')
+        plt.hist(self.knowledge,
+                 bins=np.arange(model.comp_know.min()-0.5,
+                                model.comp_know.max()+0.5),
+                 color='blue', alpha =0.5, label='Know Pre Task')
+        plt.hist(self.task,
+                  bins=np.arange(model.comp_know.min()-0.5,
+                                model.comp_know.max()+0.5),
+                  color='black', alpha=1, label='Task', histtype='step')
+        plt.legend()
+        plt.title(self.name + ' [' + self.dept
+                  + ' Exp: ' + str(self.exp) + ']\n'
+                  + 'Needed Knowledge: ' + str(len(list(c_t_l.elements())))
+                  + '    Gained Knowledge: ' + str(len(list(c_learn_path.elements()))))
+        plt.xlabel('Knowledge Categories')
+        plt.ylabel('Knowledge Quantity')
+        plt.grid()
+        plt.show()
+        x = 5
 
     def step(self):
         # The agent's step will go here.
@@ -160,20 +232,20 @@ class KnowledgeModel(mesa.Model):
         # plot company knowledge for each department
         plt.figure(figsize=(10,6))
         plt.hist(self.dept_know['SE']['dist'],
-                 bins=np.arange(self.dept_know['SE']['dist'].min()-0.5,
-                                self.dept_know['SE']['dist'].max()+0.5),
+                 bins=np.arange(self.comp_know.min()-0.5,
+                                self.comp_know.max()+0.5),
                   color='red', alpha=1, label='SE')
         plt.hist(self.dept_know['SW']['dist'],
-                 bins=np.arange(self.dept_know['SW']['dist'].min()-0.5,
-                                self.dept_know['SW']['dist'].max()+0.5),
+                 bins=np.arange(self.comp_know.min()-0.5,
+                                self.comp_know.max()+0.5),
                   color='green', alpha=0.5, label='SW')
         plt.hist(self.dept_know['EE']['dist'],
-                 bins=np.arange(self.dept_know['EE']['dist'].min()-0.5,
-                                self.dept_know['EE']['dist'].max()+0.5),
+                 bins=np.arange(self.comp_know.min()-0.5,
+                                self.comp_know.max()+0.5),
                   color='yellow', alpha=0.5, label='EE')
         plt.hist(self.dept_know['ME']['dist'],
-                 bins=np.arange(self.dept_know['ME']['dist'].min()-0.5,
-                                self.dept_know['ME']['dist'].max()+0.5),
+                 bins=np.arange(self.comp_know.min()-0.5,
+                                self.comp_know.max()+0.5),
                   color='blue', alpha=0.25, label='ME')
         plt.legend(loc='upper right')
         plt.title('Company Knowledge by Department')
