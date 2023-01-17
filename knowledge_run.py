@@ -10,12 +10,12 @@ import pandas as pd
 from collections import Counter
 from knowledge_model import KnowledgeModel
 
-model = KnowledgeModel(10)
+model = KnowledgeModel(20)
 
 # for i in range(10):
 #     model.step()
 
-
+'''
 ##############################################################################
 # generate a model for a company's departments and knowledge scope
 ##############################################################################
@@ -24,23 +24,23 @@ model = KnowledgeModel(10)
 # systems
 mu1, sigma1, N1 = 0, 30, 1000
 X1 = np.random.normal(mu1, sigma1, N1).astype(int)
-X1[X1>50] -= 100
+X1[X1>=50] -= 100
 X1[X1<-50] += 100
 
 # software
 mu2, sigma2, N2 = 25, 20, 1000
 X2 = np.random.normal(mu2, sigma2, N2).astype(int)
-X2[X2>50] -= 100
+X2[X2>=50] -= 100
 X2[X2<-50] += 100
 # electrical
 mu3, sigma3, N3 = 50, 20, 1000
 X3 = np.random.normal(mu3, sigma3, N3).astype(int)
-X3[X3>50] -= 100
+X3[X3>=50] -= 100
 X3[X3<-50] += 100
 # mechanical
 mu4, sigma4, N4 = -25, 20, 1000
 X4 = np.random.normal(mu4, sigma4, N4).astype(int)
-X4[X4>50] -= 100
+X4[X4>=50] -= 100
 X4[X4<-50] += 100
 
 plt.figure(figsize=(10,6))
@@ -48,14 +48,55 @@ plt.hist(X1, bins=np.arange(X1.min()-0.5, X1.max()+0.5),
           color='red', alpha = 1, label='SE')
 plt.hist(X2, bins=np.arange(X2.min()-0.5, X2.max()+0.5), 
           color='green', alpha = 0.75, label='SW')
-plt.hist(X3, bins=np.arange(X3.min()-0.5, X3.max()+0.5), 
-          color='yellow', alpha = 0.5, label='EE')
-plt.hist(X4, bins=np.arange(X4.min()-0.5, X4.max()+0.5), 
-          color='blue', alpha = 0.3, label='ME')
+# plt.hist(X3, bins=np.arange(X3.min()-0.5, X3.max()+0.5), 
+#           color='yellow', alpha = 0.5, label='EE')
+# plt.hist(X4, bins=np.arange(X4.min()-0.5, X4.max()+0.5), 
+#           color='blue', alpha = 0.3, label='ME')
 plt.legend(loc='upper right')
 plt.xlabel('Knowledge Category')
 plt.ylabel('Knowledge Quantity')
 plt.show()
+
+##############################################################################
+# generate database of all company knowledge from all departments
+##############################################################################
+
+know_key_ct = 100
+know_key = list(np.arange(know_key_ct).astype(int)-int(know_key_ct/2))
+
+
+se_ct = Counter(X1)
+sw_ct = Counter(X2)
+ee_ct = Counter(X3)
+me_ct = Counter(X4)
+
+for n in know_key:
+    print(str(n) + ': ' + str(me_ct[n]))
+
+
+diff_ct = se_ct - sw_ct
+
+diff_ct = se_ct.subtract(sw_ct)
+
+
+plt.figure(figsize=(10,6))
+plt.hist(X1, bins=np.arange(X1.min()-0.5, X1.max()+0.5), 
+          color='red', alpha = 1, label='SE')
+plt.hist(X2, bins=np.arange(X2.min()-0.5, X2.max()+0.5), 
+          color='green', alpha = 0.75, label='SW')
+plt.hist(list((sw_ct+diff_ct).elements()), bins=np.arange(X2.min()-0.5, X2.max()+0.5), 
+          color='black', alpha = 0.5, label='SW+SE')
+plt.legend(loc='upper right')
+plt.xlabel('Knowledge Category')
+plt.ylabel('Knowledge Quantity')
+plt.show()
+
+
+to_learn = list((se_ct - sw_ct).elements())
+
+
+
+to_learn = list((c_t - c_k).elements())
 
 ##############################################################################
 # creating a company of employees with varying skill levels
@@ -233,6 +274,7 @@ for i in range(10):
 plt.hist(steps, bins=range(steps.min(), steps.max() + 1), edgecolor='black')
 plt.show()
 
+'''
 '''
 # The model could be evaluated at the model level for
 #    - The number of tasks completed company wide
