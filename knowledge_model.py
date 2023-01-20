@@ -39,7 +39,7 @@ class EmployeeAgent(mesa.Agent):
         self.task = Counter(task)
         # the difference betwen the employee's task and knowledge is what they need to learn
         self.emp_know_to_learn = self.task - self.emp_know
-        self.generate_learning_path(plot=False)
+        self.generate_learning_path(plot=True)
         self.plot_emp_know_post_task()
 
     def plot_employee_task(self):
@@ -89,6 +89,14 @@ class EmployeeAgent(mesa.Agent):
                 rand_learn = np.random.normal(mu_learn, sigma_learn, 1).astype(int)
                 new_learn[rand_learn.item()] += 1
                 if new_learn[cat] == needed_know: # then knowledge has been attained
+                    # subtract the existing knowledge from the learning distribution
+                    # new knowledge is knowledge that you didn't already know
+                    # and knowledge that you did't just find out on the learning path
+                    c_n_k = new_learn - self.emp_know - self.task_learn_path # counter new knowledge
+
+                    # add new knowledge to the learning path
+                    self.task_learn_path = c_n_k + self.task_learn_path
+
                     if plot:
                         # plot employee task
                         plt.figure(figsize=(10,6))
@@ -98,13 +106,14 @@ class EmployeeAgent(mesa.Agent):
                                   color='red', alpha=1, label='SE Dept', where='mid')
                         plt.bar(self.emp_know.keys(),
                                  self.emp_know.values(),
-                                 color='green', alpha =0.5, label='Employee', width=1)
+                                 color='blue', alpha =0.25, label='Employee', width=1)
                         plt.step(self.model.know_cats,
                                 [self.task[n] for n in self.model.know_cats],
                                   color='black', alpha=1, label='Task', where='mid')
-                        plt.bar(new_learn.keys(),
-                                 new_learn.values(),
-                                 color='blue', alpha = 0.5, label='Research', width=1)
+                        plt.bar(c_n_k.keys(),
+                                c_n_k.values(),
+                                 color='green', alpha =0.75, label='Know Post Task',
+                                 bottom=[self.emp_know[n] for n in c_n_k.keys()])
                         plt.legend()
                         plt.title(self.name + ' [' + self.dept
                                   + ' Exp: ' + str(self.exp) + ']\n'
@@ -122,14 +131,8 @@ class EmployeeAgent(mesa.Agent):
                         plt.grid()
                         plt.show()
 
-                    # subtract the existing knowledge from the learning distribution
-                    # new knowledge is knowledge that you didn't already know
-                    # and knowledge that you did't just find out on the learning path
-                    c_n_k = new_learn - self.emp_know - self.task_learn_path # counter new knowledge
-
-                    # add new knowledge to the learning path
-                    self.task_learn_path = c_n_k + self.task_learn_path
                     break
+
     def plot_emp_know_post_task(self):
         plt.figure(figsize=(10,6))
         # stacked bar chart?
