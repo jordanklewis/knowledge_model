@@ -39,10 +39,10 @@ class EmployeeAgent(mesa.Agent):
         self.task = Counter(task)
         # the difference betwen the employee's task and knowledge is what they need to learn
         self.emp_know_to_learn = self.task - self.emp_know
-        self.generate_learning_path(plot=True)
+        self.generate_learning_path(plot=False)
         self.plot_emp_know_post_task()
 
-    def plot_employee_task(self):
+    def plot_employee_task(self): # this could be obsolete?
         # plot employee task
         plt.figure(figsize=(10,6))
         plt.bar(self.emp_know.keys(),
@@ -63,7 +63,9 @@ class EmployeeAgent(mesa.Agent):
                   + 'Needed Knowledge: ' + str(len(list(self.emp_know_to_learn()))))
         plt.xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
         plt.minorticks_on()
-        plt.xticks(np.arange(min(self.model.know_cats), max(self.model.know_cats)+1, 5))
+        plt.xticks(np.arange(min(self.model.know_cats),
+                             max(self.model.know_cats)+1,
+                             self.model.know_cat_ct/20))
         plt.tick_params(axis='x', which='minor', length=5, width=1)
         plt.tick_params(axis='x', which='major', length=7, width=2)
         plt.xlabel('Knowledge Categories')
@@ -123,7 +125,8 @@ class EmployeeAgent(mesa.Agent):
                         plt.xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
                         plt.minorticks_on()
                         plt.xticks(np.arange(min(self.model.know_cats),
-                                             max(self.model.know_cats)+1, 5))
+                                             max(self.model.know_cats)+1,
+                                             self.model.know_cat_ct/20))
                         plt.tick_params(axis='x', which='minor', length=5, width=1)
                         plt.tick_params(axis='x', which='major', length=7, width=2)
                         plt.xlabel('Knowledge Categories')
@@ -155,7 +158,9 @@ class EmployeeAgent(mesa.Agent):
         plt.legend()
         plt.xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
         plt.minorticks_on()
-        plt.xticks(np.arange(min(self.model.know_cats), max(self.model.know_cats)+1, 5))
+        plt.xticks(np.arange(min(self.model.know_cats),
+                             max(self.model.know_cats)+1,
+                             self.model.know_cat_ct/20))
         plt.tick_params(axis='x', which='minor', length=5, width=1)
         plt.tick_params(axis='x', which='major', length=7, width=2)
         plt.title(self.name + ' [' + self.dept
@@ -190,10 +195,10 @@ class KnowledgeModel(mesa.Model):
         self.roster = []
 
         # department descriptive statistics
-        self.dept_know = {'SE': {'mu': 0, 'sigma': 30},
-                     'SW': {'mu': 25, 'sigma': 20},
-                     'EE': {'mu': 50, 'sigma': 20},
-                     'ME': {'mu': -25, 'sigma': 20}}
+        self.dept_know = {'SE': {'mu': 0, 'sigma': self.know_cat_ct/3},
+                     'SW': {'mu': self.know_cat_ct/4, 'sigma': self.know_cat_ct/5},
+                     'EE': {'mu': self.know_cat_ct/2, 'sigma': self.know_cat_ct/5},
+                     'ME': {'mu': self.know_cat_ct/-4, 'sigma': self.know_cat_ct/5}}
 
         # model parameters
         self.schedule = mesa.time.RandomActivation(self)
@@ -202,6 +207,8 @@ class KnowledgeModel(mesa.Model):
         # create company knowledge
         self.create_company_know_dist()
         self.plot_company_know()
+        self.plot_company_know_subplots()
+
 
         # generate company employees
         name_list = self.create_employee_name_list()
@@ -301,7 +308,9 @@ class KnowledgeModel(mesa.Model):
                   color='blue', alpha=0.25, label='ME', width=1)
         plt.xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
         plt.minorticks_on()
-        plt.xticks(np.arange(min(self.know_cats), max(self.know_cats)+1, 5))
+        plt.xticks(np.arange(min(self.know_cats),
+                             max(self.know_cats)+1,
+                             self.know_cat_ct/20))
         plt.tick_params(axis='x', which='minor', length=5, width=1)
         plt.tick_params(axis='x', which='major', length=7, width=2)
         plt.legend(loc='upper right')
@@ -312,54 +321,62 @@ class KnowledgeModel(mesa.Model):
 
     def plot_company_know_subplots(self):
         # plot distributions on subplots
-        _,ax = plt.subplots(2, 2, figsize=(10,6))
-        ax[0][0].bar(self.dept_know['SE']['dist'].keys(),
+        _,axis = plt.subplots(2, 2, figsize=(10,6))
+        axis[0][0].bar(self.dept_know['SE']['dist'].keys(),
                 self.dept_know['SE']['dist'].values(),
                   color='red', alpha=1, label='SE', width=1)
-        ax[0][0].set_title('Systems Enginereing')
-        ax[0][0].set_xlabel('Knowledge Category')
-        ax[0][0].set_ylabel('Knowledge Quantity')
-        ax[0][0].set_xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
-        ax[0][0].set_xticks(np.arange(min(self.know_cats), max(self.know_cats)+1, 10))
-        ax[0][0].minorticks_on()
-        ax[0][0].tick_params(axis='x', which='minor', length=5, width=1)
-        ax[0][0].tick_params(axis='x', which='major', length=7, width=2)
+        axis[0][0].set_title('Systems Enginereing')
+        axis[0][0].set_xlabel('Knowledge Category')
+        axis[0][0].set_ylabel('Knowledge Quantity')
+        axis[0][0].set_xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
+        axis[0][0].set_xticks(np.arange(min(self.know_cats),
+                                      max(self.know_cats)+1,
+                                      self.know_cat_ct/10))
+        axis[0][0].minorticks_on()
+        axis[0][0].tick_params(axis='x', which='minor', length=5, width=1)
+        axis[0][0].tick_params(axis='x', which='major', length=7, width=2)
 
-        ax[0][1].bar(self.dept_know['SW']['dist'].keys(),
+        axis[0][1].bar(self.dept_know['SW']['dist'].keys(),
                 self.dept_know['SW']['dist'].values(),
                   color='green', alpha=0.5, label='SE', width=1)
-        ax[0][1].set_title('Software Enginereing')
-        ax[0][1].set_xlabel('Knowledge Category')
-        ax[0][1].set_ylabel('Knowledge Quantity')
-        ax[0][1].set_xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
-        ax[0][1].set_xticks(np.arange(min(self.know_cats), max(self.know_cats)+1, 10))
-        ax[0][1].minorticks_on()
-        ax[0][1].tick_params(axis='x', which='minor', length=5, width=1)
-        ax[0][1].tick_params(axis='x', which='major', length=7, width=2)
+        axis[0][1].set_title('Software Enginereing')
+        axis[0][1].set_xlabel('Knowledge Category')
+        axis[0][1].set_ylabel('Knowledge Quantity')
+        axis[0][1].set_xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
+        axis[0][1].set_xticks(np.arange(min(self.know_cats),
+                                      max(self.know_cats)+1,
+                                      self.know_cat_ct/10))
+        axis[0][1].minorticks_on()
+        axis[0][1].tick_params(axis='x', which='minor', length=5, width=1)
+        axis[0][1].tick_params(axis='x', which='major', length=7, width=2)
 
-        ax[1][0].bar(self.dept_know['EE']['dist'].keys(),
+        axis[1][0].bar(self.dept_know['EE']['dist'].keys(),
                 self.dept_know['EE']['dist'].values(),
                   color='yellow', alpha=0.5, label='SE', width=1)
-        ax[1][0].set_title('Electrical Enginereing')
-        ax[1][0].set_xlabel('Knowledge Category')
-        ax[1][0].set_ylabel('Knowledge Quantity')
-        ax[1][0].set_xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
-        ax[1][0].set_xticks(np.arange(min(self.know_cats), max(self.know_cats)+1, 10))
-        ax[1][0].minorticks_on()
-        ax[1][0].tick_params(axis='x', which='minor', length=5, width=1)
-        ax[1][0].tick_params(axis='x', which='major', length=7, width=2)
+        axis[1][0].set_title('Electrical Enginereing')
+        axis[1][0].set_xlabel('Knowledge Category')
+        axis[1][0].set_ylabel('Knowledge Quantity')
+        axis[1][0].set_xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
+        axis[1][0].set_xticks(np.arange(min(self.know_cats),
+                                      max(self.know_cats)+1,
+                                      self.know_cat_ct/10))
+        axis[1][0].minorticks_on()
+        axis[1][0].tick_params(axis='x', which='minor', length=5, width=1)
+        axis[1][0].tick_params(axis='x', which='major', length=7, width=2)
 
-        ax[1][1].bar(self.dept_know['ME']['dist'].keys(),
+        axis[1][1].bar(self.dept_know['ME']['dist'].keys(),
                 self.dept_know['ME']['dist'].values(),
                   color='blue', alpha=0.25, label='SE', width=1)
-        ax[1][1].set_title('Mechanical Enginereing')
-        ax[1][1].set_xlabel('Knowledge Category')
-        ax[1][1].set_ylabel('Knowledge Quantity')
-        ax[1][1].set_xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
-        ax[1][1].set_xticks(np.arange(min(self.know_cats), max(self.know_cats)+1, 10))
-        ax[1][1].minorticks_on()
-        ax[1][1].tick_params(axis='x', which='minor', length=5, width=1)
-        ax[1][1].tick_params(axis='x', which='major', length=7, width=2)
+        axis[1][1].set_title('Mechanical Enginereing')
+        axis[1][1].set_xlabel('Knowledge Category')
+        axis[1][1].set_ylabel('Knowledge Quantity')
+        axis[1][1].set_xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
+        axis[1][1].set_xticks(np.arange(min(self.know_cats),
+                                      max(self.know_cats)+1,
+                                      self.know_cat_ct/10))
+        axis[1][1].minorticks_on()
+        axis[1][1].tick_params(axis='x', which='minor', length=5, width=1)
+        axis[1][1].tick_params(axis='x', which='major', length=7, width=2)
 
         plt.tight_layout()
         plt.show()
@@ -372,8 +389,8 @@ class KnowledgeModel(mesa.Model):
                                      self.num_employees, replace=False))
 
     def get_employee_experience(self):
-        return (np.random.choice(9, p=[.1, .1, .14, .2,
-                                      .2, .1, .1, .05, .01])+1)*100
+        return int((np.random.choice(9, p=[.1, .1, .14, .2,
+                                      .2, .1, .1, .05, .01])+1)*self.max_know/10)
 
     def get_employee_knowledge_dist(self, dept, exp):
         know = np.random.normal(self.dept_know[dept]['mu'],
