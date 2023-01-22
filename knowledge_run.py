@@ -10,10 +10,10 @@ import pandas as pd
 from collections import Counter
 from knowledge_model import KnowledgeModel
 
-model = KnowledgeModel(1)
+model = KnowledgeModel(2)
 
-# for i in range(10):
-#     model.step()
+for i in range(300):
+    model.step()
 
 '''
 ##############################################################################
