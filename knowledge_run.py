@@ -10,11 +10,54 @@ import pandas as pd
 from collections import Counter
 from knowledge_model import KnowledgeModel
 
-model = KnowledgeModel(2)
+model = KnowledgeModel(5)
 
-for i in range(300):
+for i in range(3000):
     model.step()
 
+model_data = pd.DataFrame(model.step_data)
+
+
+# Data Analysis Objectives
+# 1. Employee personal knowledge growth (hours until promotion)
+# 2. Employee personal task performance (total completed tasks, task complexity)
+# 3. Company knowledge growth (max knowledge in company, average knowledge in company)
+# 4. Company task performance (total completed tasks, task complexity)
+
+# Current problem:
+    # Employees who learn through perosnal research grow knowledge at the same
+    # rate as employees who receive help (1 knowledge per step). This means
+    # employees are promoted at the same rate whether the receive help or not.
+    # In theory, employees who receive help will accomplish tasks quicker.
+    # Accopmlishing tasks quicker is better for the company. The user of this
+    # model is corporate management, who's top prioriety is maximizing company
+    # performance.
+
+# There are 2 types of plots:
+    # 1. Plots that verify the moddel is working corretly and demonstrate how the model works
+    # 2. Plots that measure the model performance and answer the research question
+
+
+# this analysis and plot demonstrates the promotion/performance cycle
+# you are a top performer as you near a promotion, once promoted you have 
+# new responsibilities causing you to take longer to complete tasks
+emp_ids = pd.unique(model_data.employee_id)
+plt.figure(figsize=(10,6))
+for i in emp_ids:
+    comp_ndx = model_data.index[(model_data.employee_id==i) &
+                                (model_data.task_completed==True)]
+    s = model_data.step[comp_ndx]
+    x = model_data.step[comp_ndx].diff()
+    pro = model_data.employee_exp[comp_ndx].diff()==1000
+    plt.plot(s, x, label=i)
+    plt.plot(s[pro], x[pro], '*')
+    
+plt.legend()
+plt.title('Promotion vs Task Performance Cycle')
+plt.xlabel('Step')
+plt.ylabel('Steps to Complete the Task')
+plt.show()
+    
 '''
 ##############################################################################
 # generate a model for a company's departments and knowledge scope
