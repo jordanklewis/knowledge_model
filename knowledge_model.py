@@ -16,51 +16,185 @@ class EmployeeAgent(mesa.Agent):
 
     def __init__(self, unique_id, exp, name, dept, know, model):
         super().__init__(unique_id, model)
+        self.emp_id = unique_id
         self.exp = exp
         self.name = name
         self.dept = dept
+        self.emp_know_pre_task = know
         self.emp_know = know
-        self.task_num = 0
+        self.emp_task_num = -1
+        self.research_know_ct = 0
+        self.helped_know_ct = 0
+        self.read_know_ct = 0
+        self.teach_know_ct = 0
+        self.write_know_ct = 0
         self.model = model
-        self.busy = False
+        self.task_completed = True
         self.task = Counter()
         self.emp_know_to_learn = Counter()
+        self.emp_remain_know_to_learn = Counter()
         self.task_learn_path = Counter()
+        self.know_cat_research = Counter()
+        self.emp_performance = []
 
-        self.get_new_task()
+    def step(self):
+        # the end of a step is initaited by
+        # 1. Employee gains new knowledge
+        # 2. Employee completes a task
+
+        # before starting step, see if employee is eligable for promotion
+        self.check_for_promotion() # maybe only promote when a task is completed ???????
+
+
+        # if a current task is not assigned, then assign one
+        if self.task_completed:
+            self.get_new_task()
+            self.emp_know_pre_task = self.emp_know
+            if self.check_for_task_completion():
+                self.task_completed = True
+                print('Task completed with no new knowledge.' +
+                      ' This should never happen')
+                return
+
+        # employees should ask for help on the most needed knowledge category
+        no_help = True # for now, assume no employee's help eachother
+
+        # if no help is currently availalbe, they should research the low hanging fruit
+        if no_help: # if help is unavailable for a know cat, then research
+            self.work_on_task_without_help()
+
+        # At the end of every step, check for task completion and log data
+        self.task_completed = self.check_for_task_completion()
+        self.log_step_data()
+
+    def work_on_task_without_help(self):
+        # pick the know_cat that will take the least research to finish the task
+        know_cat = self.emp_remain_know_to_learn.most_common()[-1][0]
+
+        # Continue researching until new knowledge is found in a category.
+        # When researching, if you are discovering knowledge that is already
+        # known, then not much time is spent because the information is already
+        # known. Having foundational knowledge around the area that is needed
+        # to be discovered will allow a person to make the discovery faster than
+        # someone without foundational knowledge.
+        while not self.know_cat_research - self.emp_know:
+            self.research_know_cat(know_cat)
+
+        # add new know to the emp_know
+        self.emp_know = self.emp_know + (self.know_cat_research - self.emp_know)
+
+        # determine needed know still remaining
+        self.emp_remain_know_to_learn = self.task - self.emp_know
+
+        # clear the know_cat_research
+        self.know_cat_research = Counter()
+
+    def check_for_task_completion(self):
+        # check to see if the employee has the needed knowledge to complete the task
+        if self.task - self.emp_know: # if not empty, task is not completed
+            return False
+        # otherwise, the task has been completed
+        # self.plot_emp_know_post_task()
+        return True
+
+    def log_step_data(self):
+        self.model.step_data.append({'step': self.model.step_num,
+                                    'employee_id': self.emp_id,
+                                    'employee_name': self.name,
+                                    'employee_dept': self.dept,
+                                    'employee_exp': self.exp,
+                                    'task_num': self.emp_task_num,
+                                    'needed_know': len(list(self.emp_know_to_learn.elements())),
+                                    'total_knowledge': len(list(self.emp_know.elements())),
+                                    'task_complexity': len(list(self.task.elements())),
+                                    'task_completed': self.task_completed,
+                                    'research_know': 0,
+                                    'helped_know': 0,
+                                    'read_know': 0,
+                                    'teach_know': 0})
+
+    def check_for_promotion(self):
+        # check if employee needs a promotion to be assigned more challenging tasks
+        if len(list(self.emp_know.elements())) >= self.exp + self.model.max_know/10:
+            self.exp = int(self.exp + self.model.max_know/10)
+
+    def research_know_cat(self, cat):
+        # generate a normal distribution for learning to the target level
+        # learning to a deisred level is not a linear path. This is simulated as a
+        # normal distribution of knowledge centered around the target knowledge
+        mu_research = cat
+        sigma_research = 1
+        rand_research = np.random.normal(mu_research, sigma_research, 1).astype(int)
+        rand_research[rand_research>=self.model.know_cat_ct/2] -= self.model.know_cat_ct
+        rand_research[rand_research<-self.model.know_cat_ct/2] += self.model.know_cat_ct
+        self.know_cat_research[rand_research.item()] += 1
 
     def get_new_task(self):
         task_level = int(self.exp * self.model.innovation_rate)
-        task = np.random.normal(self.model.dept_know[self.dept]['mu'],
-                                   self.model.dept_know[self.dept]['sigma'],
-                                   task_level).astype(int)
-        task[task>=self.model.know_cat_ct/2] -= self.model.know_cat_ct
-        task[task<-self.model.know_cat_ct/2] += self.model.know_cat_ct
-        self.task = Counter(task)
-        # the difference betwen the employee's task and knowledge is what they need to learn
-        self.emp_know_to_learn = self.task - self.emp_know
-        self.generate_learning_path(plot=False)
-        self.plot_emp_know_post_task()
+        self.emp_know_to_learn = Counter()
 
-    def plot_employee_task(self): # this could be obsolete?
-        # plot employee task
+        # There is no such thing as a mindless job in 2023
+
+        # Employees should not be assigned a task where ZERO new knowledge
+        # is required to complete the task. If an employee's job scope is so
+        # repetitive and well defined that that zero new knowledge is required,
+        # it can be assumed that this employee's role is best substituted
+        # for an autonomous process. As an employee approaches a promotion,
+        # assigned tasks will require less and less new knowledge to complete
+        # allowing the soon to be promoted employee to accomplish tasks faster.
+        # As a result of the employee's star performance in their expected role,
+        # the employee will soon be promoted to facing more challenging tasks.
+
+        while not self.emp_know_to_learn: # if no new know to learn, stay in loop
+            task = np.random.normal(self.model.dept_know[self.dept]['mu'],
+                                       self.model.dept_know[self.dept]['sigma'],
+                                       task_level).astype(int)
+            task[task>=self.model.know_cat_ct/2] -= self.model.know_cat_ct
+            task[task<-self.model.know_cat_ct/2] += self.model.know_cat_ct
+            self.task = Counter(task)
+
+            # the difference betwen the employee's task and knowledge is what
+            # they need to learn
+            self.emp_know_to_learn = self.task - self.emp_know
+            self.emp_remain_know_to_learn = self.emp_know_to_learn
+
+        # assign a task number from the company
+        self.emp_task_num = self.model.comp_task_num
+        self.task_completed = False
+        #increment comp task number so next assigned task has unique number
+        self.model.comp_task_num += 1
+
+
+
+    def plot_employee_task(self):
+        emp_know_gain = self.emp_know - self.emp_know_pre_task
+
         plt.figure(figsize=(10,6))
-        plt.bar(self.emp_know.keys(),
-                 self.emp_know.values(),
-                  color='red', alpha =0.5, label='Employee')
-        plt.bar(self.task.keys(),
-                 self.task.values(),
-                  color='black', alpha =0.5, label='Task')
+
+        plt.bar(self.know_cat_research.keys(),
+                self.know_cat_research.values(),
+                color='black', alpha =0.75, label='Research')
+        plt.bar(self.emp_know_pre_task.keys(),
+                self.emp_know_pre_task.values(),
+                color='blue', alpha =0.25, label='Know Pre Task')
+        plt.bar(emp_know_gain.keys(),
+                emp_know_gain.values(),
+                 color='green', alpha =0.75, label='Know Gain',
+                 bottom=[self.emp_know_pre_task[n] for n in emp_know_gain.keys()])
+        plt.bar(self.emp_know_to_learn.keys(),
+                self.emp_know_to_learn.values(),
+                 color='red', alpha =0.75, label='Needed Know',
+                 bottom=[self.emp_know[n] for n in self.emp_know_to_learn.keys()])
         plt.step(self.model.know_cats,
-                 [self.model.comp_know[n] for n in self.model.know_cats],
-                  color='black', alpha =1, label='Company', where='mid')
+                [self.task[n] for n in self.model.know_cats],
+                  color='black', alpha=1, label='Task', where='mid')
         plt.step(self.model.know_cats,
                  [self.model.dept_know[self.dept]['dist'][n] for n in self.model.know_cats],
-                  color='blue', alpha =1, label='Dept', where='mid')
+                  'r--', alpha =1, label=str(self.dept)+' Dept', where='mid')
+        plt.step(self.model.know_cats,
+                 [self.model.comp_know[n] for n in self.model.know_cats],
+                  'k--', alpha =1, label='Company', where='mid')
         plt.legend()
-        plt.title(self.name + ' [' + self.dept
-                  + ' Exp: ' + str(self.exp) + ']\n'
-                  + 'Needed Knowledge: ' + str(len(list(self.emp_know_to_learn()))))
         plt.xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
         plt.minorticks_on()
         plt.xticks(np.arange(min(self.model.know_cats),
@@ -68,11 +202,19 @@ class EmployeeAgent(mesa.Agent):
                              self.model.know_cat_ct/20))
         plt.tick_params(axis='x', which='minor', length=5, width=1)
         plt.tick_params(axis='x', which='major', length=7, width=2)
+        plt.title(self.name + ' [' + self.dept
+                  + ' Exp: ' + str(self.exp) + ']'
+                  + '    Total Knowledge: ' + str(len(list(self.emp_know.elements()))) + '\n'
+                  + 'Step: ' + str(self.model.step_num)
+                  + '    Task Number: ' + str(self.emp_task_num)
+                  + '    Needed Knowledge: ' + str(len(list(self.emp_know_to_learn.elements())))
+                  + '    Knowledge Gain: ' + str(len(list(emp_know_gain.elements()))))
         plt.xlabel('Knowledge Categories')
         plt.ylabel('Knowledge Quantity')
+
         plt.show()
 
-    def generate_learning_path(self, plot=False):
+    def generate_learning_path(self, plot=False): # obsolete
         # generate the learning path for the employee to find all needed knowledge without help
 
         # generate a normal distribution for learning to the target level
@@ -94,7 +236,8 @@ class EmployeeAgent(mesa.Agent):
                     # subtract the existing knowledge from the learning distribution
                     # new knowledge is knowledge that you didn't already know
                     # and knowledge that you did't just find out on the learning path
-                    c_n_k = new_learn - self.emp_know - self.task_learn_path # counter new knowledge
+                    # Define counter of new knowledge
+                    c_n_k = new_learn - self.emp_know - self.task_learn_path
 
                     # add new knowledge to the learning path
                     self.task_learn_path = c_n_k + self.task_learn_path
@@ -131,27 +274,27 @@ class EmployeeAgent(mesa.Agent):
                         plt.tick_params(axis='x', which='major', length=7, width=2)
                         plt.xlabel('Knowledge Categories')
                         plt.ylabel('Knowledge Quantity')
-                        plt.grid()
                         plt.show()
 
                     break
 
     def plot_emp_know_post_task(self):
+        emp_know_gain = self.emp_know - self.emp_know_pre_task
+
         plt.figure(figsize=(10,6))
-        # stacked bar chart?
-        plt.bar(self.emp_know.keys(),
-                self.emp_know.values(),
+        plt.bar(self.emp_know_pre_task.keys(),
+                self.emp_know_pre_task.values(),
                 color='blue', alpha =0.25, label='Know Pre Task')
-        plt.bar(self.task_learn_path.keys(),
-                self.task_learn_path.values(),
-                 color='green', alpha =0.75, label='Know Post Task',
-                 bottom=[self.emp_know[n] for n in self.task_learn_path.keys()])
+        plt.bar(emp_know_gain.keys(),
+                emp_know_gain.values(),
+                 color='green', alpha =0.75, label='Know Gain',
+                 bottom=[self.emp_know_pre_task[n] for n in emp_know_gain.keys()])
         plt.step(self.model.know_cats,
                 [self.task[n] for n in self.model.know_cats],
                   color='black', alpha=1, label='Task', where='mid')
         plt.step(self.model.know_cats,
                  [self.model.dept_know[self.dept]['dist'][n] for n in self.model.know_cats],
-                  color='red', alpha =1, label=str(self.dept)+' Dept', where='mid')
+                  'r--', alpha =1, label=str(self.dept)+' Dept', where='mid')
         plt.step(self.model.know_cats,
                  [self.model.comp_know[n] for n in self.model.know_cats],
                   'k--', alpha =1, label='Company', where='mid')
@@ -164,35 +307,32 @@ class EmployeeAgent(mesa.Agent):
         plt.tick_params(axis='x', which='minor', length=5, width=1)
         plt.tick_params(axis='x', which='major', length=7, width=2)
         plt.title(self.name + ' [' + self.dept
-                  + ' Exp: ' + str(self.exp) + ']\n'
-                  + 'Needed Knowledge: ' + str(len(list(self.emp_know_to_learn.elements())))
-                  + '    Gained Knowledge: ' + str(len(list(self.task_learn_path.elements()))))
+                  + ' Exp: ' + str(self.exp) + ']'
+                  + '    Total Knowledge: ' + str(len(list(self.emp_know.elements()))) + '\n'
+                  + 'Step: ' + str(self.model.step_num)
+                  + '    Completed Task Number: ' + str(self.emp_task_num)
+                  + '    Needed Knowledge: ' + str(len(list(self.emp_know_to_learn.elements())))
+                  + '    Gained Knowledge: ' + str(len(list(emp_know_gain.elements()))))
         plt.xlabel('Knowledge Categories')
         plt.ylabel('Knowledge Quantity')
-        plt.grid()
         plt.show()
-
-    def step(self):
-        # The agent's step will go here.
-        print("Agent: " + str(self.unique_id)
-              + ", Knowledge: " + str(self.emp_know)
-              + ", ActiveTask: " + str(self.task_num))
-
 
 class KnowledgeModel(mesa.Model):
     """A model with some number of agents."""
 
     def __init__(self, N):
+        super().__init__()
         # company parameters
         self.innovation_rate = 0.5 # value must be betwen 0 and 1
-        self.know_cat_ct = 100
+        self.know_cat_ct = 1000
         self.know_cats = list(np.arange(self.know_cat_ct).astype(int)
                               - int(self.know_cat_ct/2))
-        self.max_know = 1000
+        self.max_know = 10000
         self.num_employees = N
-        self.task_num = 0
+        self.comp_task_num = 0
         self.task_dict = {}
         self.roster = []
+        self.step_num = -1
 
         # department descriptive statistics
         self.dept_know = {'SE': {'mu': 0, 'sigma': self.know_cat_ct/3},
@@ -203,11 +343,12 @@ class KnowledgeModel(mesa.Model):
         # model parameters
         self.schedule = mesa.time.RandomActivation(self)
         self.running = True
+        self.step_data = []
 
         # create company knowledge
         self.create_company_know_dist()
-        self.plot_company_know()
-        self.plot_company_know_subplots()
+        #self.plot_company_know()
+        #self.plot_company_know_subplots()
 
 
         # generate company employees
@@ -402,7 +543,6 @@ class KnowledgeModel(mesa.Model):
 
     def step(self):
         """Advance the model by one step."""
-        self.task_dict[self.task_num] = [2,3,7,8]
-        self.task_num += 1
-        self.datacollector.collect(self)
+        #self.datacollector.collect(self)
+        self.step_num += 1
         self.schedule.step()
