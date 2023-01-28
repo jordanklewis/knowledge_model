@@ -10,9 +10,9 @@ import pandas as pd
 from collections import Counter
 from knowledge_model import KnowledgeModel
 
-model = KnowledgeModel(5)
+model = KnowledgeModel(1)
 
-for i in range(3000):
+for i in range(300):
     model.step()
 
 model_data = pd.DataFrame(model.step_data)
@@ -57,6 +57,29 @@ plt.title('Promotion vs Task Performance Cycle')
 plt.xlabel('Step')
 plt.ylabel('Steps to Complete the Task')
 plt.show()
+
+
+# this analysis and plot demonstrates how employee value to the company grows
+# over time. The more tasks of higher company value that are completed, the 
+# more valueable the employee is to the company.
+emp_ids = pd.unique(model_data.employee_id)
+plt.figure(figsize=(10,6))
+for i in emp_ids:
+    comp_ndx = model_data.index[(model_data.employee_id==i) &
+                                (model_data.task_completed==True)]
+    s = model_data.step[comp_ndx]
+    x = np.cumsum(model_data.task_complexity[comp_ndx])
+    pro = model_data.employee_exp[comp_ndx].diff()==1000
+    plt.plot(s, x, label=i)
+    plt.plot(s[pro], x[pro], '*')
+    
+plt.legend()
+plt.ylabel('Cumulative Completed Task Value')
+plt.xlabel('Step')
+plt.title('Employee Company Value')
+plt.show()
+
+
     
 '''
 ##############################################################################
