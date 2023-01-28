@@ -45,7 +45,6 @@ class EmployeeAgent(mesa.Agent):
         # before starting step, see if employee is eligable for promotion
         self.check_for_promotion() # maybe only promote when a task is completed ???????
 
-
         # if a current task is not assigned, then assign one
         if self.task_completed:
             self.get_new_task()
@@ -65,7 +64,18 @@ class EmployeeAgent(mesa.Agent):
 
         # At the end of every step, check for task completion and log data
         self.task_completed = self.check_for_task_completion()
+        if self.task_completed:
+            self.update_company_and_dept_know()
         self.log_step_data()
+        
+    def update_company_and_dept_know(self):
+        new_dept_know = self.task - self.model.dept_know[self.dept]['dist']
+        if new_dept_know:
+            
+        
+        
+        
+        new_comp_know = self.task - self.model.comp_know
 
     def work_on_task_without_help(self):
         # pick the know_cat that will take the least research to finish the task
