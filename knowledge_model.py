@@ -347,7 +347,7 @@ class KnowledgeModel(mesa.Model):
 
         # create company knowledge
         self.create_company_know_dist()
-        #self.plot_company_know()
+        self.plot_company_know()
         #self.plot_company_know_subplots()
 
 
@@ -368,7 +368,8 @@ class KnowledgeModel(mesa.Model):
             know = self.get_employee_knowledge_dist(dept, exp)
 
             # add employee to the company roster for later reference
-            self.roster.append({'Name': name, 'Dept': dept, 'Exp': exp})
+            self.roster.append({'Name': name, 'Dept': dept, 'Exp': exp,
+                                'Start_Know': len(list(know.elements()))})
 
             # create employee agent
             agent = EmployeeAgent(i, exp, name, dept, know, self)
@@ -534,9 +535,10 @@ class KnowledgeModel(mesa.Model):
                                       .2, .1, .1, .05, .01])+1)*self.max_know/10)
 
     def get_employee_knowledge_dist(self, dept, exp):
+        start_know = exp + np.random.randint(1,self.max_know/10)
         know = np.random.normal(self.dept_know[dept]['mu'],
                                 self.dept_know[dept]['sigma'],
-                                exp).astype(int)
+                                start_know).astype(int)
         know[know>=self.know_cat_ct/2] -= self.know_cat_ct
         know[know<-self.know_cat_ct/2] += self.know_cat_ct
         return Counter(know)
