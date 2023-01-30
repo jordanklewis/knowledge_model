@@ -10,9 +10,9 @@ import pandas as pd
 from collections import Counter
 from knowledge_model import KnowledgeModel
 
-model = KnowledgeModel(1)
+model = KnowledgeModel(100)
 
-for i in range(300):
+for i in range(1000):
     model.step()
 
 model_data = pd.DataFrame(model.step_data)
@@ -37,10 +37,10 @@ model_data = pd.DataFrame(model.step_data)
     # 1. Plots that verify the moddel is working corretly and demonstrate how the model works
     # 2. Plots that measure the model performance and answer the research question
 
-
 # this analysis and plot demonstrates the promotion/performance cycle
 # you are a top performer as you near a promotion, once promoted you have 
-# new responsibilities causing you to take longer to complete tasks
+# new responsibilities causing you to take longer to complete tasks. The more
+# expereienced/promoted an employee is, the quicker they can complete tasks
 emp_ids = pd.unique(model_data.employee_id)
 plt.figure(figsize=(10,6))
 for i in emp_ids:
@@ -48,16 +48,14 @@ for i in emp_ids:
                                 (model_data.task_completed==True)]
     s = model_data.step[comp_ndx]
     x = model_data.step[comp_ndx].diff()
-    pro = model_data.employee_exp[comp_ndx].diff()==1000
+    pro = model_data.employee_exp[comp_ndx].diff()==model.max_know/10
     plt.plot(s, x, label=i)
     plt.plot(s[pro], x[pro], '*')
-    
-plt.legend()
+# plt.legend()
 plt.title('Promotion vs Task Performance Cycle')
 plt.xlabel('Step')
 plt.ylabel('Steps to Complete the Task')
 plt.show()
-
 
 # this analysis and plot demonstrates how employee value to the company grows
 # over time. The more tasks of higher company value that are completed, the 
@@ -69,18 +67,61 @@ for i in emp_ids:
                                 (model_data.task_completed==True)]
     s = model_data.step[comp_ndx]
     x = np.cumsum(model_data.task_complexity[comp_ndx])
-    pro = model_data.employee_exp[comp_ndx].diff()==1000
+    pro = model_data.employee_exp[comp_ndx].diff()==model.max_know/10
     plt.plot(s, x, label=i)
     plt.plot(s[pro], x[pro], '*')
-    
-plt.legend()
+# plt.legend()
 plt.ylabel('Cumulative Completed Task Value')
 plt.xlabel('Step')
 plt.title('Employee Company Value')
 plt.show()
+plt.show()
+
+# This plot demonstrates how each department is growing in knowledge over time
+unique_steps, ndx = np.unique(model_data.step, return_index=True)
+plt.figure(figsize=(10,6))
+plt.plot(unique_steps, model_data.SE_dept_know.iloc[ndx],
+         color='red', alpha=1, label='SE')
+plt.plot(unique_steps, model_data.SW_dept_know.iloc[ndx],
+         color='green', alpha=0.5, label='SW')
+plt.plot(unique_steps, model_data.EE_dept_know.iloc[ndx],
+         color='yellow', alpha=1, label='EE')
+plt.plot(unique_steps, model_data.ME_dept_know.iloc[ndx],
+         color='blue', alpha=0.25, label='ME')
+plt.legend()
+plt.ylabel('Department Knowledge')
+plt.xlabel('Step')
+plt.title('Department Knowledge Growth')
+plt.grid()
+plt.show()
+
+# This plot demonstrates how the company knowledge is growing in knowledge over time
+unique_steps, ndx = np.unique(model_data.step, return_index=True)
+plt.figure(figsize=(10,6))
+plt.plot(unique_steps, model_data.comp_know.iloc[ndx],
+         color='red', alpha=1)
+plt.ylabel('Company Knowledge')
+plt.xlabel('Step')
+plt.title('Company Knowledge Growth')
+plt.grid()
+plt.show()
 
 
-    
+# This plot demonstrates how the value of the tasks the company is completing
+# over time.
+comp_ndx = model_data.index[model_data.task_completed==True]
+x = model_data.iloc[comp_ndx]
+x = np.cumsum(x.groupby('step')['task_complexity'].sum())
+plt.figure(figsize=(10,6))
+plt.plot(x.index, x,
+         color='blue', alpha=1)
+plt.ylabel('Cumulative Completed Task Value')
+plt.xlabel('Step')
+plt.title('Company Task Value')
+plt.grid()
+plt.show()
+
+
 '''
 ##############################################################################
 # generate a model for a company's departments and knowledge scope

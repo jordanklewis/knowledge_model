@@ -67,15 +67,86 @@ class EmployeeAgent(mesa.Agent):
         if self.task_completed:
             self.update_company_and_dept_know()
         self.log_step_data()
-        
+
     def update_company_and_dept_know(self):
         new_dept_know = self.task - self.model.dept_know[self.dept]['dist']
         if new_dept_know:
-            
-        
-        
-        
+            # self.plot_new_dept_know()
+            self.model.dept_know[self.dept]['dist'] += new_dept_know
+
         new_comp_know = self.task - self.model.comp_know
+        if new_comp_know:
+            # self.plot_new_comp_know()
+            self.model.comp_know += new_comp_know
+
+    def plot_new_dept_know(self):
+        new_dept_know = self.task - self.model.dept_know[self.dept]['dist']
+        plt.figure(figsize=(10,6))
+        plt.bar(self.model.dept_know[self.dept]['dist'].keys(),
+                self.model.dept_know[self.dept]['dist'].values(),
+                color='orange', alpha =0.25, label='Prev Dept Know')
+        plt.bar(new_dept_know.keys(),
+                new_dept_know.values(),
+                 color='green', alpha =0.75, label='New Dept Know',
+                 bottom=[self.model.dept_know[self.dept]['dist'][n]
+                         for n in new_dept_know.keys()])
+        plt.step(self.model.know_cats,
+                 [self.model.comp_know[n] for n in self.model.know_cats],
+                  'k--', alpha =1, label='Company', where='mid')
+        plt.step(self.model.know_cats,
+                [self.task[n] for n in self.model.know_cats],
+                  color='black', alpha=1, label='Task', where='mid')
+        plt.legend()
+        plt.xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
+        plt.minorticks_on()
+        plt.xticks(np.arange(min(self.model.know_cats),
+                             max(self.model.know_cats)+1,
+                             self.model.know_cat_ct/20))
+        plt.tick_params(axis='x', which='minor', length=5, width=1)
+        plt.tick_params(axis='x', which='major', length=7, width=2)
+        plt.title('Total ' + self.dept + ' Dept Knowledge: ' +
+                  str(len(list((self.model.dept_know[self.dept]['dist']
+                                + new_dept_know).elements())))
+                  + '\nContributor: ' + self.name + ' [' + self.dept
+                            + ' Exp: ' + str(self.exp) + ']'
+                            + '    Total Knowledge: '
+                            + str(len(list(self.emp_know.elements()))))
+        plt.xlabel('Knowledge Categories')
+        plt.ylabel('Knowledge Quantity')
+        plt.show()
+
+    def plot_new_comp_know(self):
+        new_comp_know = self.task - self.model.comp_know
+        plt.figure(figsize=(10,6))
+        plt.bar(self.model.comp_know.keys(),
+                self.model.comp_know.values(),
+                color='purple', alpha =0.25, label='Prev Comp Know')
+        plt.bar(new_comp_know.keys(),
+                new_comp_know.values(),
+                 color='green', alpha =0.75, label='New Comp Know',
+                 bottom=[self.model.comp_know[n]
+                         for n in new_comp_know.keys()])
+        plt.step(self.model.know_cats,
+                [self.task[n] for n in self.model.know_cats],
+                  color='black', alpha=1, label='Task', where='mid')
+        plt.legend()
+        plt.xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
+        plt.minorticks_on()
+        plt.xticks(np.arange(min(self.model.know_cats),
+                             max(self.model.know_cats)+1,
+                             self.model.know_cat_ct/20))
+        plt.tick_params(axis='x', which='minor', length=5, width=1)
+        plt.tick_params(axis='x', which='major', length=7, width=2)
+        plt.title('Total Company Knowledge: ' +
+                  str(len(list((self.model.comp_know
+                                + new_comp_know).elements())))
+                  + '\nContributor: ' + self.name + ' [' + self.dept
+                            + ' Exp: ' + str(self.exp) + ']'
+                            + '    Total Knowledge: '
+                            + str(len(list(self.emp_know.elements()))))
+        plt.xlabel('Knowledge Categories')
+        plt.ylabel('Knowledge Quantity')
+        plt.show()
 
     def work_on_task_without_help(self):
         # pick the know_cat that will take the least research to finish the task
@@ -112,19 +183,25 @@ class EmployeeAgent(mesa.Agent):
 
     def log_step_data(self):
         self.model.step_data.append({'step': self.model.step_num,
-                                    'employee_id': self.emp_id,
-                                    'employee_name': self.name,
-                                    'employee_dept': self.dept,
-                                    'employee_exp': self.exp,
-                                    'task_num': self.emp_task_num,
-                                    'needed_know': len(list(self.emp_know_to_learn.elements())),
-                                    'total_knowledge': len(list(self.emp_know.elements())),
-                                    'task_complexity': len(list(self.task.elements())),
-                                    'task_completed': self.task_completed,
-                                    'research_know': 0,
-                                    'helped_know': 0,
-                                    'read_know': 0,
-                                    'teach_know': 0})
+        'employee_id': self.emp_id,
+        'employee_name': self.name,
+        'employee_dept': self.dept,
+        'employee_exp': self.exp,
+        'task_num': self.emp_task_num,
+        'needed_know': len(list(self.emp_know_to_learn.elements())),
+        'total_knowledge': len(list(self.emp_know.elements())),
+        'task_complexity': len(list(self.task.elements())),
+        'task_completed': self.task_completed,
+        'research_know': 0,
+        'helped_know': 0,
+        'read_know': 0,
+        'teach_know': 0,
+        'SE_dept_know': len(list(self.model.dept_know['SE']['dist'].elements())),
+        'SW_dept_know': len(list(self.model.dept_know['SW']['dist'].elements())),
+        'EE_dept_know': len(list(self.model.dept_know['EE']['dist'].elements())),
+        'ME_dept_know': len(list(self.model.dept_know['ME']['dist'].elements())),
+        'comp_know': len(list(self.model.comp_know.elements()))})
+
 
     def check_for_promotion(self):
         # check if employee needs a promotion to be assigned more challenging tasks
@@ -276,10 +353,10 @@ class KnowledgeModel(mesa.Model):
         super().__init__()
         # company parameters
         self.innovation_rate = 0.5 # value must be betwen 0 and 1
-        self.know_cat_ct = 100
+        self.know_cat_ct = 1000
         self.know_cats = list(np.arange(self.know_cat_ct).astype(int)
                               - int(self.know_cat_ct/2))
-        self.max_know = 1000
+        self.max_know = 10000
         self.num_employees = N
         self.comp_task_num = 0
         self.task_dict = {}
