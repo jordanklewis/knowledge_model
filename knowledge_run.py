@@ -10,9 +10,9 @@ import pandas as pd
 from collections import Counter
 from knowledge_model import KnowledgeModel
 
-model = KnowledgeModel(100)
+model = KnowledgeModel(20)
 
-for i in range(1000):
+for i in range(3000):
     model.step()
 
 model_data = pd.DataFrame(model.step_data)
