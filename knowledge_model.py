@@ -7,11 +7,10 @@ Created on Tue Dec 27 20:55:49 2022
 from collections import Counter
 import mesa
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
+from knowledge_plots import KnowledgePlots
 
-
-class EmployeeAgent(mesa.Agent):
+class EmployeeAgent(mesa.Agent, KnowledgePlots):
     """An agent with fixed initial wealth."""
 
     def __init__(self, unique_id, exp, name, dept, know, model):
@@ -41,6 +40,9 @@ class EmployeeAgent(mesa.Agent):
         self.know_cat_research = Counter()
         self.emp_performance = []
 
+# To Dos
+# Figure out profiling to see what functions are taking the longest to run
+
     def step(self):
         # the end of a step is initaited by
         # 1. Employee gains new knowledge
@@ -57,6 +59,7 @@ class EmployeeAgent(mesa.Agent):
         if self.task_completed:
             self.get_new_task()
             self.emp_know_pre_task = self.emp_know
+            # self.plot_emp_task()
             if self.check_for_task_completion():
                 self.task_completed = True
                 print('Task completed with no new knowledge.' +
@@ -68,7 +71,7 @@ class EmployeeAgent(mesa.Agent):
         # got_help = False
 
         # if no help is currently availalbe, they should research the low hanging fruit
-        if not(got_help): # if help is unavailable for a know cat, then research
+        if not got_help: # if help is unavailable for a know cat, then research
             self.work_on_task_without_help()
 
         # At the end of every step, check for task completion and log data
@@ -83,7 +86,7 @@ class EmployeeAgent(mesa.Agent):
         # first loop through all remaining know to learn ordering from most
         # challenging to least
         # employees should ask for help on the most needed knowledge category
-        for i, k in enumerate(self.emp_remain_know_to_learn.most_common()):
+        for i, _ in enumerate(self.emp_remain_know_to_learn.most_common()):
             know_cat = self.emp_remain_know_to_learn.most_common()[i][0]
 
             # find a helpful and available employee for the know_cat starting
@@ -110,77 +113,6 @@ class EmployeeAgent(mesa.Agent):
                     return True
         # if no help is available for all needed categories, return false
         return False
-    
-    # for a in reversed(self.model.schedule.agents):
-    #     print(a.name + ': ' + str(a.emp_know[know_cat]))
-
-    def plot_employee_help_know_cat(self, know_cat, agent):
-        # verification plot to demonstrate that the chosen employee has
-        # the know needed to teach the requesting employee
-        _,axis = plt.subplots(2, 1, figsize=(10,12))
-        axis[0].bar(self.emp_know.keys(),
-                self.emp_know.values(),
-                color='blue', alpha =0.25, label='Know')
-        axis[0].bar(know_cat,
-                self.emp_remain_know_to_learn[know_cat],
-                 color='red', alpha =0.75, label='Target Needed Know',
-                 bottom=self.emp_know[know_cat])
-        axis[0].step(self.model.know_cats,
-                [self.task[n] for n in self.model.know_cats],
-                  color='black', alpha=1, label='Task', where='mid')
-        axis[0].step(self.model.know_cats,
-                 [self.model.comp_know[n] for n in self.model.know_cats],
-                  'k--', alpha =1, label='Company', where='mid')
-        axis[0].set_title(self.name + ' [' + self.dept
-                  + ' Exp: ' + str(self.exp) + ']'
-                  + '    Total Knowledge: ' + str(len(list(self.emp_know.elements()))) + '\n'
-                  + 'Step: ' + str(self.model.step_num)
-                  + '    Task Number: ' + str(self.emp_task_num)
-                  + '    Target Know Category: ' + str(know_cat)
-                  + '    Target Know Quantity: ' + str(self.task[know_cat])
-                  + '    Current Know Quantity: ' + str(self.emp_know[know_cat]))
-        axis[0].set_xlabel('Knowledge Category')
-        axis[0].set_ylabel('Knowledge Quantity')
-        axis[0].set_xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
-        axis[0].set_xticks(np.arange(min(self.model.know_cats),
-                                      max(self.model.know_cats)+1,
-                                      self.model.know_cat_ct/20))
-        axis[0].minorticks_on()
-        axis[0].tick_params(axis='x', which='minor', length=5, width=1)
-        axis[0].tick_params(axis='x', which='major', length=7, width=2)
-        axis[0].legend()
-
-        axis[1].bar(agent.emp_know.keys(),
-                agent.emp_know.values(),
-                color='green', alpha =0.25, label='Know')
-        axis[1].bar(know_cat,
-                agent.emp_know[know_cat],
-                 color='green', alpha=1, label='Target Avail Know')
-        axis[1].step(self.model.know_cats,
-                [self.task[n] for n in self.model.know_cats],
-                  color='black', alpha=1, label='Task', where='mid')
-        axis[1].step(self.model.know_cats,
-                 [self.model.comp_know[n] for n in self.model.know_cats],
-                  'k--', alpha =1, label='Company', where='mid')
-        axis[1].set_title(('Ask For Help From:    ' + agent.name + ' [' + agent.dept
-                  + ' Exp: ' + str(agent.exp) + ']'
-                  + '    Total Knowledge: ' + str(len(list(agent.emp_know.elements()))) + '\n'
-                  + 'Status: ' + agent.status
-                  + '    Target Knowledge Category: ' + str(know_cat)
-                  + '    Target Knowledge Quantity: ' + str(agent.emp_know[know_cat])))
-        axis[1].set_xlabel('Knowledge Category')
-        axis[1].set_ylabel('Knowledge Quantity')
-        axis[1].set_xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
-        axis[1].set_xticks(np.arange(min(self.model.know_cats),
-                                      max(self.model.know_cats)+1,
-                                      self.model.know_cat_ct/20))
-        axis[1].minorticks_on()
-        axis[1].tick_params(axis='x', which='minor', length=5, width=1)
-        axis[1].tick_params(axis='x', which='major', length=7, width=2)
-        axis[1].legend()
-
-        plt.tight_layout()
-        plt.show()
 
     def update_company_and_dept_know(self):
         new_dept_know = self.task - self.model.dept_know[self.dept]['dist']
@@ -193,80 +125,11 @@ class EmployeeAgent(mesa.Agent):
             # self.plot_new_comp_know()
             self.model.comp_know += new_comp_know
 
-    def plot_new_dept_know(self):
-        new_dept_know = self.task - self.model.dept_know[self.dept]['dist']
-        plt.figure(figsize=(10,6))
-        plt.bar(self.model.dept_know[self.dept]['dist'].keys(),
-                self.model.dept_know[self.dept]['dist'].values(),
-                color='orange', alpha =0.25, label='Prev Dept Know')
-        plt.bar(new_dept_know.keys(),
-                new_dept_know.values(),
-                 color='green', alpha =0.75, label='New Dept Know',
-                 bottom=[self.model.dept_know[self.dept]['dist'][n]
-                         for n in new_dept_know.keys()])
-        plt.step(self.model.know_cats,
-                 [self.model.comp_know[n] for n in self.model.know_cats],
-                  'k--', alpha =1, label='Company', where='mid')
-        plt.step(self.model.know_cats,
-                [self.task[n] for n in self.model.know_cats],
-                  color='black', alpha=1, label='Task', where='mid')
-        plt.legend()
-        plt.xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
-        plt.minorticks_on()
-        plt.xticks(np.arange(min(self.model.know_cats),
-                             max(self.model.know_cats)+1,
-                             self.model.know_cat_ct/20))
-        plt.tick_params(axis='x', which='minor', length=5, width=1)
-        plt.tick_params(axis='x', which='major', length=7, width=2)
-        plt.title('Total ' + self.dept + ' Dept Knowledge: ' +
-                  str(len(list((self.model.dept_know[self.dept]['dist']
-                                + new_dept_know).elements())))
-                  + '\nContributor: ' + self.name + ' [' + self.dept
-                            + ' Exp: ' + str(self.exp) + ']'
-                            + '    Total Knowledge: '
-                            + str(len(list(self.emp_know.elements()))))
-        plt.xlabel('Knowledge Categories')
-        plt.ylabel('Knowledge Quantity')
-        plt.show()
-
-    def plot_new_comp_know(self):
-        new_comp_know = self.task - self.model.comp_know
-        plt.figure(figsize=(10,6))
-        plt.bar(self.model.comp_know.keys(),
-                self.model.comp_know.values(),
-                color='purple', alpha =0.25, label='Prev Comp Know')
-        plt.bar(new_comp_know.keys(),
-                new_comp_know.values(),
-                 color='green', alpha =0.75, label='New Comp Know',
-                 bottom=[self.model.comp_know[n]
-                         for n in new_comp_know.keys()])
-        plt.step(self.model.know_cats,
-                [self.task[n] for n in self.model.know_cats],
-                  color='black', alpha=1, label='Task', where='mid')
-        plt.legend()
-        plt.xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
-        plt.minorticks_on()
-        plt.xticks(np.arange(min(self.model.know_cats),
-                             max(self.model.know_cats)+1,
-                             self.model.know_cat_ct/20))
-        plt.tick_params(axis='x', which='minor', length=5, width=1)
-        plt.tick_params(axis='x', which='major', length=7, width=2)
-        plt.title('Total Company Knowledge: ' +
-                  str(len(list((self.model.comp_know
-                                + new_comp_know).elements())))
-                  + '\nContributor: ' + self.name + ' [' + self.dept
-                            + ' Exp: ' + str(self.exp) + ']'
-                            + '    Total Knowledge: '
-                            + str(len(list(self.emp_know.elements()))))
-        plt.xlabel('Knowledge Categories')
-        plt.ylabel('Knowledge Quantity')
-        plt.show()
-
     def work_on_task_without_help(self):
-        
+
         self.status = 'Researching'
         self.coworker = 'None'
-        
+
         # pick the know_cat that will take the least research to finish the task
         know_cat = self.emp_remain_know_to_learn.most_common()[-1][0]
 
@@ -280,7 +143,7 @@ class EmployeeAgent(mesa.Agent):
             self.research_know_cat(know_cat)
 
         # use this plot to demonstrate research through normal distributions
-        # self.plot_employee_research()
+        # self.plot_emp_research()
 
         # add new know to the emp_know
         self.emp_know = self.emp_know + (self.know_cat_research - self.emp_know)
@@ -290,6 +153,7 @@ class EmployeeAgent(mesa.Agent):
 
         # clear the know_cat_research
         self.know_cat_research = Counter()
+        self.research_know_ct += 1
 
     def check_for_task_completion(self):
         # check to see if the employee has the needed knowledge to complete the task
@@ -310,16 +174,16 @@ class EmployeeAgent(mesa.Agent):
         'total_knowledge': len(list(self.emp_know.elements())),
         'task_complexity': len(list(self.task.elements())),
         'task_completed': self.task_completed,
-        'research_know': 0,
-        'helped_know': 0,
-        'read_know': 0,
-        'teach_know': 0,
+        'research_know': self.research_know_ct,
+        'learn_know': self.learn_know_ct,
+        'teach_know': self.teach_know_ct,
+        'read_know': self.read_know_ct,
+        'document_know': self.document_know_ct,
         'SE_dept_know': len(list(self.model.dept_know['SE']['dist'].elements())),
         'SW_dept_know': len(list(self.model.dept_know['SW']['dist'].elements())),
         'EE_dept_know': len(list(self.model.dept_know['EE']['dist'].elements())),
         'ME_dept_know': len(list(self.model.dept_know['ME']['dist'].elements())),
         'comp_know': len(list(self.model.comp_know.elements()))})
-
 
     def check_for_promotion(self):
         # check if employee needs a promotion to be assigned more challenging tasks
@@ -331,8 +195,15 @@ class EmployeeAgent(mesa.Agent):
         # learning to a deisred level is not a linear path. This is simulated as a
         # normal distribution of knowledge centered around the target knowledge
         mu_research = cat
-        sigma_research = 1
+        # sigma 5 = 1:3 ratio
+        #     with sigma 5, helping others is more company productive
+        # sigma 3 = 1:2.25 ratio
+        # sigma 2 = 1:2 ratio
+        #     with sigma 2, researching on your own is more productive
+        # sigma 1 = 1:0.7 ratio
+        sigma_research = 5
         rand_research = np.random.normal(mu_research, sigma_research, 1).astype(int)
+        rand_research %= self.model.know_cat_ct
         rand_research[rand_research>=self.model.know_cat_ct/2] -= self.model.know_cat_ct
         rand_research[rand_research<-self.model.know_cat_ct/2] += self.model.know_cat_ct
         self.know_cat_research[rand_research.item()] += 1
@@ -372,146 +243,12 @@ class EmployeeAgent(mesa.Agent):
         self.task_completed = False
         # increment comp task number so next assigned task has unique number
         self.model.comp_task_num += 1
-        
-    def plot_employee_task(self):
-        emp_know_gain = self.emp_know - self.emp_know_pre_task
 
-        plt.figure(figsize=(10,6))
-        plt.bar(self.emp_know_pre_task.keys(),
-                self.emp_know_pre_task.values(),
-                color='blue', alpha =0.25, label='Know Pre Task')
-        plt.bar(emp_know_gain.keys(),
-                emp_know_gain.values(),
-                 color='blue', alpha =0.75, label='Know Gain',
-                 bottom=[self.emp_know_pre_task[n] for n in emp_know_gain.keys()])
-        plt.bar(self.emp_remain_know_to_learn.keys(),
-                self.emp_remain_know_to_learn.values(),
-                 color='red', alpha =1, label='Needed Know',
-                 bottom=[self.emp_know[n] for n in self.emp_remain_know_to_learn.keys()])
-        plt.step(self.model.know_cats,
-                [self.task[n] for n in self.model.know_cats],
-                  color='black', alpha=1, label='Task', where='mid')
-        plt.step(self.model.know_cats,
-                 [self.model.dept_know[self.dept]['dist'][n] for n in self.model.know_cats],
-                  'g:', alpha =1, label=str(self.dept)+' Dept', where='mid')
-        plt.step(self.model.know_cats,
-                 [self.model.comp_know[n] for n in self.model.know_cats],
-                  'k--', alpha =1, label='Company', where='mid')
-        plt.legend()
-        plt.xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
-        plt.minorticks_on()
-        plt.xticks(np.arange(min(self.model.know_cats),
-                             max(self.model.know_cats)+1,
-                             self.model.know_cat_ct/20))
-        plt.tick_params(axis='x', which='minor', length=5, width=1)
-        plt.tick_params(axis='x', which='major', length=7, width=2)
-        plt.title(self.name + ' [' + self.dept
-                  + ' Exp: ' + str(self.exp) + ']'
-                  + '    Total Knowledge: ' + str(len(list(self.emp_know.elements()))) + '\n'
-                  + 'Step: ' + str(self.model.step_num)
-                  + '    Task Number: ' + str(self.emp_task_num)
-                  + '    Needed Knowledge: ' + str(len(list(self.emp_know_to_learn.elements())))
-                  + '    Knowledge Gain: ' + str(len(list(emp_know_gain.elements()))))
-        plt.xlabel('Knowledge Categories')
-        plt.ylabel('Knowledge Quantity')
-        plt.show()
-
-    def plot_employee_research(self):
-        emp_know_gain = self.emp_know - self.emp_know_pre_task
-        breakthrough = self.know_cat_research - self.emp_know
-        research = self.know_cat_research - breakthrough
-
-        plt.figure(figsize=(10,6))
-        plt.bar(self.emp_know_pre_task.keys(),
-                self.emp_know_pre_task.values(),
-                color='blue', alpha =0.25, label='Know Pre Task')
-        plt.bar(emp_know_gain.keys(),
-                emp_know_gain.values(),
-                 color='blue', alpha =0.75, label='Know Gain',
-                 bottom=[self.emp_know_pre_task[n] for n in emp_know_gain.keys()])
-        plt.bar(self.emp_remain_know_to_learn.keys(),
-                self.emp_remain_know_to_learn.values(),
-                 color='red', alpha =1, label='Needed Know',
-                 bottom=[self.emp_know[n] for n in self.emp_remain_know_to_learn.keys()])
-        plt.bar(research.keys(),
-                research.values(),
-                color='black', alpha =0.5, label='Research')
-        plt.bar(breakthrough.keys(),
-                breakthrough.values(),
-                 color='green', alpha =1, label='Breakthrough',
-                 bottom=[research[n] for n in breakthrough.keys()])
-        plt.step(self.model.know_cats,
-                [self.task[n] for n in self.model.know_cats],
-                  color='black', alpha=1, label='Task', where='mid')
-        plt.step(self.model.know_cats,
-                 [self.model.dept_know[self.dept]['dist'][n] for n in self.model.know_cats],
-                  'g:', alpha =1, label=str(self.dept)+' Dept', where='mid')
-        plt.step(self.model.know_cats,
-                 [self.model.comp_know[n] for n in self.model.know_cats],
-                  'k--', alpha =1, label='Company', where='mid')
-        plt.legend()
-        plt.xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
-        plt.minorticks_on()
-        plt.xticks(np.arange(min(self.model.know_cats),
-                             max(self.model.know_cats)+1,
-                             self.model.know_cat_ct/20))
-        plt.tick_params(axis='x', which='minor', length=5, width=1)
-        plt.tick_params(axis='x', which='major', length=7, width=2)
-        plt.title(self.name + ' [' + self.dept
-                  + ' Exp: ' + str(self.exp) + ']'
-                  + '    Total Knowledge: ' + str(len(list(self.emp_know.elements()))) + '\n'
-                  + 'Step: ' + str(self.model.step_num)
-                  + '    Task Number: ' + str(self.emp_task_num)
-                  + '    Needed Knowledge: ' + str(len(list(self.emp_know_to_learn.elements())))
-                  + '    Knowledge Gain: ' + str(len(list(emp_know_gain.elements()))))
-        plt.xlabel('Knowledge Categories')
-        plt.ylabel('Knowledge Quantity')
-        plt.show()
-
-    def plot_emp_know_post_task(self):
-        emp_know_gain = self.emp_know - self.emp_know_pre_task
-
-        plt.figure(figsize=(10,6))
-        plt.bar(self.emp_know_pre_task.keys(),
-                self.emp_know_pre_task.values(),
-                color='blue', alpha =0.25, label='Know Pre Task')
-        plt.bar(emp_know_gain.keys(),
-                emp_know_gain.values(),
-                 color='green', alpha =0.75, label='Know Gain',
-                 bottom=[self.emp_know_pre_task[n] for n in emp_know_gain.keys()])
-        plt.step(self.model.know_cats,
-                [self.task[n] for n in self.model.know_cats],
-                  color='black', alpha=1, label='Task', where='mid')
-        plt.step(self.model.know_cats,
-                 [self.model.dept_know[self.dept]['dist'][n] for n in self.model.know_cats],
-                  'r--', alpha =1, label=str(self.dept)+' Dept', where='mid')
-        plt.step(self.model.know_cats,
-                 [self.model.comp_know[n] for n in self.model.know_cats],
-                  'k--', alpha =1, label='Company', where='mid')
-        plt.legend()
-        plt.xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
-        plt.minorticks_on()
-        plt.xticks(np.arange(min(self.model.know_cats),
-                             max(self.model.know_cats)+1,
-                             self.model.know_cat_ct/20))
-        plt.tick_params(axis='x', which='minor', length=5, width=1)
-        plt.tick_params(axis='x', which='major', length=7, width=2)
-        plt.title(self.name + ' [' + self.dept
-                  + ' Exp: ' + str(self.exp) + ']'
-                  + '    Total Knowledge: ' + str(len(list(self.emp_know.elements()))) + '\n'
-                  + 'Step: ' + str(self.model.step_num)
-                  + '    Completed Task Number: ' + str(self.emp_task_num)
-                  + '    Needed Knowledge: ' + str(len(list(self.emp_know_to_learn.elements())))
-                  + '    Gained Knowledge: ' + str(len(list(emp_know_gain.elements()))))
-        plt.xlabel('Knowledge Categories')
-        plt.ylabel('Knowledge Quantity')
-        plt.show()
-
-class KnowledgeModel(mesa.Model):
+class KnowledgeModel(mesa.Model, KnowledgePlots):
     """A model with some number of agents."""
 
-    def __init__(self, N):
-        super().__init__()
+    def __init__(self, N, seed=None):
+        super().__init__(seed=seed)
         # company parameters
         self.innovation_rate = 0.5 # value must be betwen 0 and 1
         self.know_cat_ct = 1000
@@ -523,6 +260,7 @@ class KnowledgeModel(mesa.Model):
         self.task_dict = {}
         self.roster = []
         self.step_num = -1
+        np.random.seed(0)
 
         # department descriptive statistics
         self.dept_know = {'SE': {'mu': 0, 'sigma': self.know_cat_ct/3},
@@ -570,13 +308,13 @@ class KnowledgeModel(mesa.Model):
 
         self.datacollector = mesa.DataCollector(
             agent_reporters={"Knowledge": "knowledge"})
-    
+
     def get_roster_status(self):
         self.roster = []
-        for a in self.schedule.agents:
-            self.roster.append({'Name': a.name, 'Dept': a.dept, 'Exp': a.exp,
-                                'Current_Know': len(list(a.emp_know.elements())),
-                               'Status': a.status, 'Coworker': a.coworker})
+        for agt in self.schedule.agents:
+            self.roster.append({'Name': agt.name, 'Dept': agt.dept, 'Exp': agt.exp,
+                                'Current_Know': len(list(agt.emp_know.elements())),
+                               'Status': agt.status, 'Coworker': agt.coworker})
         self.roster = pd.DataFrame(self.roster)
         print(self.roster)
 
@@ -633,96 +371,6 @@ class KnowledgeModel(mesa.Model):
                                        self.dept_know['ME']['dist'][cat]])
         self.comp_know = Counter(self.comp_know)
 
-    def plot_company_know(self):
-        # plot company knowledge for each department
-        plt.figure(figsize=(10,6))
-        plt.bar(self.dept_know['SE']['dist'].keys(),
-                self.dept_know['SE']['dist'].values(),
-                  color='red', alpha=1, label='SE', width=1)
-        plt.bar(self.dept_know['SW']['dist'].keys(),
-                self.dept_know['SW']['dist'].values(),
-                  color='green', alpha=0.5, label='SW', width=1)
-        plt.bar(self.dept_know['EE']['dist'].keys(),
-                self.dept_know['EE']['dist'].values(),
-                  color='yellow', alpha=0.5, label='EE', width=1)
-        plt.bar(self.dept_know['ME']['dist'].keys(),
-                self.dept_know['ME']['dist'].values(),
-                  color='blue', alpha=0.25, label='ME', width=1)
-        plt.xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
-        plt.minorticks_on()
-        plt.xticks(np.arange(min(self.know_cats),
-                             max(self.know_cats)+1,
-                             self.know_cat_ct/20))
-        plt.tick_params(axis='x', which='minor', length=5, width=1)
-        plt.tick_params(axis='x', which='major', length=7, width=2)
-        plt.legend(loc='upper right')
-        plt.title('Company Knowledge by Department')
-        plt.xlabel('Knowledge Categories')
-        plt.ylabel('Knowledge Quantity')
-        plt.show()
-
-    def plot_company_know_subplots(self):
-        # plot distributions on subplots
-        _,axis = plt.subplots(2, 2, figsize=(10,6))
-        axis[0][0].bar(self.dept_know['SE']['dist'].keys(),
-                self.dept_know['SE']['dist'].values(),
-                  color='red', alpha=1, label='SE', width=1)
-        axis[0][0].set_title('Systems Enginereing')
-        axis[0][0].set_xlabel('Knowledge Category')
-        axis[0][0].set_ylabel('Knowledge Quantity')
-        axis[0][0].set_xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
-        axis[0][0].set_xticks(np.arange(min(self.know_cats),
-                                      max(self.know_cats)+1,
-                                      self.know_cat_ct/10))
-        axis[0][0].minorticks_on()
-        axis[0][0].tick_params(axis='x', which='minor', length=5, width=1)
-        axis[0][0].tick_params(axis='x', which='major', length=7, width=2)
-
-        axis[0][1].bar(self.dept_know['SW']['dist'].keys(),
-                self.dept_know['SW']['dist'].values(),
-                  color='green', alpha=0.5, label='SE', width=1)
-        axis[0][1].set_title('Software Enginereing')
-        axis[0][1].set_xlabel('Knowledge Category')
-        axis[0][1].set_ylabel('Knowledge Quantity')
-        axis[0][1].set_xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
-        axis[0][1].set_xticks(np.arange(min(self.know_cats),
-                                      max(self.know_cats)+1,
-                                      self.know_cat_ct/10))
-        axis[0][1].minorticks_on()
-        axis[0][1].tick_params(axis='x', which='minor', length=5, width=1)
-        axis[0][1].tick_params(axis='x', which='major', length=7, width=2)
-
-        axis[1][0].bar(self.dept_know['EE']['dist'].keys(),
-                self.dept_know['EE']['dist'].values(),
-                  color='yellow', alpha=0.5, label='SE', width=1)
-        axis[1][0].set_title('Electrical Enginereing')
-        axis[1][0].set_xlabel('Knowledge Category')
-        axis[1][0].set_ylabel('Knowledge Quantity')
-        axis[1][0].set_xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
-        axis[1][0].set_xticks(np.arange(min(self.know_cats),
-                                      max(self.know_cats)+1,
-                                      self.know_cat_ct/10))
-        axis[1][0].minorticks_on()
-        axis[1][0].tick_params(axis='x', which='minor', length=5, width=1)
-        axis[1][0].tick_params(axis='x', which='major', length=7, width=2)
-
-        axis[1][1].bar(self.dept_know['ME']['dist'].keys(),
-                self.dept_know['ME']['dist'].values(),
-                  color='blue', alpha=0.25, label='SE', width=1)
-        axis[1][1].set_title('Mechanical Enginereing')
-        axis[1][1].set_xlabel('Knowledge Category')
-        axis[1][1].set_ylabel('Knowledge Quantity')
-        axis[1][1].set_xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
-        axis[1][1].set_xticks(np.arange(min(self.know_cats),
-                                      max(self.know_cats)+1,
-                                      self.know_cat_ct/10))
-        axis[1][1].minorticks_on()
-        axis[1][1].tick_params(axis='x', which='minor', length=5, width=1)
-        axis[1][1].tick_params(axis='x', which='major', length=7, width=2)
-
-        plt.tight_layout()
-        plt.show()
-
     def create_employee_name_list(self):
         # Create employee names
         name_list = pd.read_csv("employee_names.csv")
@@ -746,8 +394,8 @@ class KnowledgeModel(mesa.Model):
     def order_agents_by_know(self):
         # sort agents in the step scheduler by their knowledge levels so that
         # the most experienced agents can make the first moves in the model
-        know_dict = {i: len(list(a.emp_know.elements()))
-                    for i, a in enumerate(self.schedule.agents)}
+        know_dict = {i: len(list(agt.emp_know.elements()))
+                    for i, agt in enumerate(self.schedule.agents)}
         agent_keys = sorted(know_dict, key=know_dict.get, reverse=True)
         self.schedule._agents = {i : self.schedule._agents[k]
                         for i, k in enumerate(agent_keys)}
@@ -758,10 +406,10 @@ class KnowledgeModel(mesa.Model):
         self.step_num += 1
         self.order_agents_by_know()
         self.schedule.step()
-        
+
         # at the end of a step, reset all agent statuses
         # in the future, a probablility distribution could be used to assign
-        # a status such as writing or busy to an agent for the next step. 
-        for a in self.schedule.agents:
-            a.status = 'Idle'
-            a.coworker = 'None'
+        # a status such as writing or busy to an agent for the next step.
+        for agt in self.schedule.agents:
+            agt.status = 'Idle'
+            agt.coworker = 'None'

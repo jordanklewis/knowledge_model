@@ -7,19 +7,16 @@ Created on Tue Dec 27 21:01:14 2022
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from collections import Counter
 from knowledge_model import KnowledgeModel
 
-model = KnowledgeModel(20)
+model = KnowledgeModel(10, seed=0)
 
 for i in range(3000):
     model.step()
 
 model_data = pd.DataFrame(model.step_data)
 
-
 # Data Analysis Objectives
-# 1. Employee personal knowledge growth (hours until promotion)
 # 2. Employee personal task performance (total completed tasks, task complexity)
 # 3. Company knowledge growth (max knowledge in company, average knowledge in company)
 # 4. Company task performance (total completed tasks, task complexity)
@@ -66,10 +63,22 @@ for i in emp_ids:
     comp_ndx = model_data.index[(model_data.employee_id==i) &
                                 (model_data.task_completed==True)]
     s = model_data.step[comp_ndx]
+    e = model_data.employee_exp[model_data.employee_id==i]
+    d = model_data.employee_dept[model_data.employee_id==i]
+    t = model_data.teach_know[model_data.employee_id==i]
+    l = model_data.learn_know[model_data.employee_id==i]
+    t = model_data.teach_know[model_data.employee_id==i]
+    r = model_data.research_know[model_data.employee_id==i]
     x = np.cumsum(model_data.task_complexity[comp_ndx])
     pro = model_data.employee_exp[comp_ndx].diff()==model.max_know/10
     plt.plot(s, x, label=i)
     plt.plot(s[pro], x[pro], '*')
+    print('Emp ID: ' + str(i) + '    Dept: ' + str(list(d)[-1])
+          + '    Exp: ' + str(list(e)[-1])
+          + '    Task Value: ' + str(list(x)[-1])
+          +'    Research Know:' + str(list(r)[-1])
+          +'    Learn Know:' + str(list(l)[-1])
+          +'    Teach Know:' + str(list(t)[-1]))
 # plt.legend()
 plt.ylabel('Cumulative Completed Task Value')
 plt.xlabel('Step')
@@ -105,7 +114,8 @@ plt.xlabel('Step')
 plt.title('Company Knowledge Growth')
 plt.grid()
 plt.show()
-
+print("Company Knowledge Growth: " 
+      + str(list(model_data.comp_know.iloc[ndx])[-1]))
 
 # This plot demonstrates how the value of the tasks the company is completing
 # over time.
@@ -120,6 +130,7 @@ plt.xlabel('Step')
 plt.title('Company Task Value')
 plt.grid()
 plt.show()
+print("Cum. Completed Task Value: " + str(list(x)[-1]))
 
 
 '''
