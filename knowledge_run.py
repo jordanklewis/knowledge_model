@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from knowledge_model import KnowledgeModel
 
-model = KnowledgeModel(10, seed=0)
+model = KnowledgeModel(50, seed=0)
 
 for i in range(3000):
     model.step()
@@ -57,29 +57,35 @@ plt.show()
 # this analysis and plot demonstrates how employee value to the company grows
 # over time. The more tasks of higher company value that are completed, the 
 # more valueable the employee is to the company.
-emp_ids = pd.unique(model_data.employee_id)
+emp_ids = sorted(pd.unique(model_data.employee_id))
 plt.figure(figsize=(10,6))
 for i in emp_ids:
     comp_ndx = model_data.index[(model_data.employee_id==i) &
                                 (model_data.task_completed==True)]
     s = model_data.step[comp_ndx]
-    e = model_data.employee_exp[model_data.employee_id==i]
-    d = model_data.employee_dept[model_data.employee_id==i]
-    t = model_data.teach_know[model_data.employee_id==i]
-    l = model_data.learn_know[model_data.employee_id==i]
-    t = model_data.teach_know[model_data.employee_id==i]
-    r = model_data.research_know[model_data.employee_id==i]
+    # e = model_data.employee_exp[model_data.employee_id==i]
+    # d = model_data.employee_dept[model_data.employee_id==i]
+    
+    # t = model_data.teach_know[model_data.employee_id==i]
+    # l = model_data.learn_know[model_data.employee_id==i]
+    # t = model_data.teach_know[model_data.employee_id==i]
+    # r = model_data.research_know[model_data.employee_id==i]
+    # doc = model_data.document_know[model_data.employee_id==i]
+    # read = model_data.read_know[model_data.employee_id==i]
+
     x = np.cumsum(model_data.task_complexity[comp_ndx])
     pro = model_data.employee_exp[comp_ndx].diff()==model.max_know/10
     plt.plot(s, x, label=i)
     plt.plot(s[pro], x[pro], '*')
-    print('Emp ID: ' + str(i) + '    Dept: ' + str(list(d)[-1])
-          + '    Exp: ' + str(list(e)[-1])
-          + '    Task Value: ' + str(list(x)[-1])
-          +'    Research Know:' + str(list(r)[-1])
-          +'    Learn Know:' + str(list(l)[-1])
-          +'    Teach Know:' + str(list(t)[-1]))
-# plt.legend()
+    # print('Emp ID: ' + str(i) + '    Dept: ' + str(list(d)[-1])
+    #       + '    Exp: ' + str(list(e)[-1])
+    #       + '    Task Value: ' + str(list(x)[-1])
+    #       +'    Research Know:' + str(list(r)[-1])
+    #       +'    Learn Know:' + str(list(l)[-1])
+    #       +'    Teach Know:' + str(list(t)[-1])
+    #       +'    Doc Know:' + str(list(doc)[-1])
+    #       +'    Read Know:' + str(list(read)[-1]))
+plt.legend()
 plt.ylabel('Cumulative Completed Task Value')
 plt.xlabel('Step')
 plt.title('Employee Company Value')
@@ -104,10 +110,10 @@ plt.title('Department Knowledge Growth')
 plt.grid()
 plt.show()
 
-# This plot demonstrates how the company knowledge is growing in knowledge over time
+# This plot demonstrates how the company is growing in knowledge over time
 unique_steps, ndx = np.unique(model_data.step, return_index=True)
 plt.figure(figsize=(10,6))
-plt.plot(unique_steps, model_data.comp_know.iloc[ndx],
+plt.plot(unique_steps, model_data.comp_know.iloc[ndx] - model_data.comp_know.iloc[0],
          color='red', alpha=1)
 plt.ylabel('Company Knowledge')
 plt.xlabel('Step')
@@ -115,7 +121,7 @@ plt.title('Company Knowledge Growth')
 plt.grid()
 plt.show()
 print("Company Knowledge Growth: " 
-      + str(list(model_data.comp_know.iloc[ndx])[-1]))
+      + str(model_data.comp_know.iloc[-1] - model_data.comp_know.iloc[0]))
 
 # This plot demonstrates how the value of the tasks the company is completing
 # over time.
@@ -131,6 +137,28 @@ plt.title('Company Task Value')
 plt.grid()
 plt.show()
 print("Cum. Completed Task Value: " + str(list(x)[-1]))
+
+# create an aggregate data frame
+emp_ids = sorted(pd.unique(model_data.employee_id))
+model_agg = []
+for i in emp_ids:
+    model_data_emp = model_data[model_data.employee_id==i]
+
+    model_agg.append({'emp_id': i,
+                      'dept': model_data_emp.employee_dept.iloc[-1],
+                      'start_know': model_data_emp.total_knowledge.iloc[0],
+                      'current_know': model_data_emp.total_knowledge.iloc[-1],
+                      'know_growth': (model_data_emp.total_knowledge.iloc[-1] 
+                                      - model_data_emp.total_knowledge.iloc[0]),
+                      'task_count': model_data_emp.task_completed.sum(),
+                      'task_value': model_data_emp.task_complexity[model_data_emp.task_completed==True].sum(),
+                      'research_know': model_data_emp.research_know.iloc[-1],
+                      'learn_know': model_data_emp.learn_know.iloc[-1],
+                      'teach_know': model_data_emp.teach_know.iloc[-1],
+                      'doc_know': model_data_emp.document_know.iloc[-1],
+                      'read_know': model_data_emp.read_know.iloc[-1]
+                      })
+model_agg = pd.DataFrame(model_agg).sort_values(['start_know'])
 
 
 '''

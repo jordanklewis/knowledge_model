@@ -189,6 +189,68 @@ class KnowledgePlots(object):
         plt.xlabel('Knowledge Categories')
         plt.ylabel('Knowledge Quantity')
         plt.show()
+
+    def plot_comp_library(self):
+        plt.figure(figsize=(10,6))
+        plt.bar(self.comp_library.keys(),
+                self.comp_library.values(),
+                color='blue', alpha =0.25, label='Library Know', width=1)
+        plt.step(self.know_cats,
+                 [self.comp_know[n] for n in self.know_cats],
+                  'k--', alpha =1, label='Company Know', where='mid')
+        plt.legend()
+        plt.xlim([min(self.know_cats)-0.5, max(self.know_cats)+0.5])
+        plt.minorticks_on()
+        plt.xticks(np.arange(min(self.know_cats),
+                             max(self.know_cats)+1,
+                             self.know_cat_ct/20))
+        plt.tick_params(axis='x', which='minor', length=5, width=1)
+        plt.tick_params(axis='x', which='major', length=7, width=2)
+        plt.title('Company Knowledge Library')
+        plt.xlabel('Knowledge Categories')
+        plt.ylabel('Knowledge Quantity')
+        plt.show()
+        
+    def plot_library_task(self):
+        emp_know_gain = self.emp_know - self.emp_know_pre_task
+    
+        plt.figure(figsize=(10,6))
+        plt.bar(self.emp_know_pre_task.keys(),
+                self.emp_know_pre_task.values(),
+                color='blue', alpha =0.25, label='Know Pre Task')
+        plt.bar(emp_know_gain.keys(),
+                emp_know_gain.values(),
+                 color='blue', alpha =0.75, label='Know Gain',
+                 bottom=[self.emp_know_pre_task[n] for n in emp_know_gain.keys()])
+        plt.bar(self.emp_remain_know_to_learn.keys(),
+                self.emp_remain_know_to_learn.values(),
+                 color='red', alpha =1, label='Needed Know',
+                 bottom=[self.emp_know[n] for n in self.emp_remain_know_to_learn.keys()])
+        plt.step(self.model.know_cats,
+                [self.task[n] for n in self.model.know_cats],
+                  color='black', alpha=1, label='Task', where='mid')
+        plt.step(self.model.know_cats,
+                 [self.model.comp_library[n] for n in self.model.know_cats],
+                  'g:', alpha =1, label='Library', where='mid')
+        plt.step(self.model.know_cats,
+                 [self.model.comp_know[n] for n in self.model.know_cats],
+                  'k--', alpha =1, label='Company', where='mid')
+        plt.legend()
+        plt.xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
+        plt.minorticks_on()
+        plt.xticks(np.arange(min(self.model.know_cats),
+                             max(self.model.know_cats)+1,
+                             self.model.know_cat_ct/20))
+        plt.tick_params(axis='x', which='minor', length=5, width=1)
+        plt.tick_params(axis='x', which='major', length=7, width=2)
+        plt.title(self.name + ' [' + self.dept
+                  + ' Exp: ' + str(self.exp) + ']'
+                  + '    Total Knowledge: ' + str(len(list(self.emp_know.elements()))) + '\n'
+                  + 'Step: ' + str(self.model.step_num)
+                  + '    Task Number: ' + str(self.emp_task_num))
+        plt.xlabel('Knowledge Categories')
+        plt.ylabel('Knowledge Quantity')
+        plt.show()
     
     def plot_emp_research(self):
         emp_know_gain = self.emp_know - self.emp_know_pre_task

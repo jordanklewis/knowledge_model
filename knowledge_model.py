@@ -36,9 +36,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         self.task = Counter()
         self.emp_know_to_learn = Counter()
         self.emp_remain_know_to_learn = Counter()
-        self.task_learn_path = Counter()
         self.know_cat_research = Counter()
-        self.emp_performance = []
 
 # To Dos
 # Figure out profiling to see what functions are taking the longest to run
@@ -48,8 +46,19 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         # 1. Employee gains new knowledge
         # 2. Employee completes a task
 
+        # agent has been assigned to produce documentation
+        if self.status == 'Documenting':
+            # Check if agent is successfully able to document anything
+            if self.document_know():
+                self.document_know_ct += 1
+                self.log_step_data() # if success, log data and exit step
+                return
+            # if the agent has nothing to document, they should work on their task
+            # Set status back to Idle
+            self.status = 'Idle'
+
         # agent must be available to continue step
-        if self.status != 'Idle':
+        if (self.status != 'Idle') & (self.status != 'Working'):
             return
 
         # before starting step, see if employee is eligable for promotion
@@ -66,19 +75,52 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
                       ' This should never happen')
                 return
 
-        # Always search for help on tasks so they can be finished quicker
-        got_help  = self.find_help_for_task()
-        # got_help = False
+        # before searching for help, agents should use the company library
+        # as much as possible to complete their task
+        if self.check_comp_library():
+            if self.check_for_task_completion():
+                self.update_company_and_dept_know()
+            self.log_step_data()
+            return
+
+        # Search for help on tasks so they can be finished quicker
+        if self.find_help_for_task():
+            if self.check_for_task_completion():
+                self.update_company_and_dept_know()
+            self.log_step_data()
+            return
 
         # if no help is currently availalbe, they should research the low hanging fruit
-        if not got_help: # if help is unavailable for a know cat, then research
-            self.work_on_task_without_help()
-
+        self.work_on_task_without_help()
         # At the end of every step, check for task completion and log data
-        self.task_completed = self.check_for_task_completion()
-        if self.task_completed:
+        if self.check_for_task_completion():
             self.update_company_and_dept_know()
         self.log_step_data()
+
+    def check_comp_library(self):
+        # first loop through all remaining know to learn ordering from most
+        # challenging to least
+        # employees should first look for library knowledge on the most needed
+        # knowledge category
+        for i in self.emp_remain_know_to_learn.most_common():
+            know_cat = i[0]
+
+            # find helpful library know for the know_cat
+            if (self.model.comp_library[know_cat] - self.emp_know[know_cat]) > 1:
+
+                # self.plot_library_task()
+
+                # add new know to the emp_know
+                self.status = 'Reading'
+                self.emp_know[know_cat] += 1
+                self.read_know_ct += 1
+
+                # determine needed know still remaining
+                self.emp_remain_know_to_learn = self.task - self.emp_know
+                return True
+
+        # if no help is available for all needed categories, return false
+        return False
 
     def find_help_for_task(self):
         # employees always want to get help from the lowest possible senority
@@ -86,8 +128,8 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         # first loop through all remaining know to learn ordering from most
         # challenging to least
         # employees should ask for help on the most needed knowledge category
-        for i, _ in enumerate(self.emp_remain_know_to_learn.most_common()):
-            know_cat = self.emp_remain_know_to_learn.most_common()[i][0]
+        for i in self.emp_remain_know_to_learn.most_common():
+            know_cat = i[0]
 
             # find a helpful and available employee for the know_cat starting
             # with the lowest ranking employee
@@ -112,6 +154,36 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
                     self.emp_remain_know_to_learn = self.task - self.emp_know
                     return True
         # if no help is available for all needed categories, return false
+        return False
+
+    def document_know(self):
+        # employees should look at the library and contribute to the categories
+        # where the knowledge quantity is the least
+
+        # this is the know that the employee has that is not in the library
+        know_diff = self.emp_know - self.model.comp_library
+
+        # if the employee has no know to contribute, do some other activity
+        if not know_diff:
+            return False
+
+        # Iter through know_diff know_cats and add to the library for any know_cats
+        # that are empty
+        for know_cat in know_diff.keys():
+            if self.model.comp_library[know_cat] == 0:
+                self.model.comp_library[know_cat] += 1
+                return True
+
+        # if there is at least some knowledge in every know_cat, then add know
+        # to the know_cat that has the least know
+        for i in reversed(self.model.comp_library.most_common()):
+            know_cat = i[0]
+            if know_diff[know_cat] > 0:
+                self.model.comp_library[know_cat] += 1
+                return True
+
+        # it shouldn't be possible to reach this point
+        print('Something went wrong in document_know() logic')
         return False
 
     def update_company_and_dept_know(self):
@@ -158,13 +230,16 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
     def check_for_task_completion(self):
         # check to see if the employee has the needed knowledge to complete the task
         if self.task - self.emp_know: # if not empty, task is not completed
+            self.task_completed = False
             return False
         # otherwise, the task has been completed
         # self.plot_emp_know_post_task()
+        self.task_completed = True
         return True
 
     def log_step_data(self):
-        self.model.step_data.append({'step': self.model.step_num,
+        self.model.step_data.append({
+        'step': self.model.step_num,
         'employee_id': self.emp_id,
         'employee_name': self.name,
         'employee_dept': self.dept,
@@ -262,11 +337,15 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
         self.step_num = -1
         np.random.seed(0)
 
+        self.assigned_states = ['Idle', 'Working', 'Documenting']
+        self.state_prob = [0.7, 0.2, 0.1]
+
         # department descriptive statistics
         self.dept_know = {'SE': {'mu': 0, 'sigma': self.know_cat_ct/3},
                      'SW': {'mu': self.know_cat_ct/4, 'sigma': self.know_cat_ct/5},
                      'EE': {'mu': self.know_cat_ct/2, 'sigma': self.know_cat_ct/5},
                      'ME': {'mu': self.know_cat_ct/-4, 'sigma': self.know_cat_ct/5}}
+        self.comp_library = Counter()
 
         # model parameters
         self.schedule = mesa.time.RandomActivation(self)
@@ -316,7 +395,7 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
                                 'Current_Know': len(list(agt.emp_know.elements())),
                                'Status': agt.status, 'Coworker': agt.coworker})
         self.roster = pd.DataFrame(self.roster)
-        print(self.roster)
+        print(self.roster.to_string())
 
     # create knowledge distribution for each company department
     def create_dept_know_dist(self):
@@ -405,11 +484,10 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
         #self.datacollector.collect(self)
         self.step_num += 1
         self.order_agents_by_know()
-        self.schedule.step()
 
-        # at the end of a step, reset all agent statuses
-        # in the future, a probablility distribution could be used to assign
-        # a status such as writing or busy to an agent for the next step.
+        # assign all agent statuses for the step
         for agt in self.schedule.agents:
-            agt.status = 'Idle'
+            agt.status = np.random.choice(self.assigned_states, p=self.state_prob)
             agt.coworker = 'None'
+
+        self.schedule.step()
