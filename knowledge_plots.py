@@ -8,8 +8,8 @@ Created on Fri Feb  3 12:14:54 2023
 import matplotlib.pyplot as plt
 import numpy as np
 
-class KnowledgePlots(object):
-    
+class KnowledgePlots():
+
     def plot_emp_help_know_cat(self, know_cat, agent):
         # verification plot to demonstrate that the chosen employee has
         # the know needed to teach the requesting employee
@@ -45,7 +45,7 @@ class KnowledgePlots(object):
         axis[0].tick_params(axis='x', which='minor', length=5, width=1)
         axis[0].tick_params(axis='x', which='major', length=7, width=2)
         axis[0].legend()
-    
+
         axis[1].bar(agent.emp_know.keys(),
                 agent.emp_know.values(),
                 color='green', alpha =0.25, label='Know')
@@ -74,10 +74,10 @@ class KnowledgePlots(object):
         axis[1].tick_params(axis='x', which='minor', length=5, width=1)
         axis[1].tick_params(axis='x', which='major', length=7, width=2)
         axis[1].legend()
-    
+
         plt.tight_layout()
         plt.show()
-        
+
     def plot_new_dept_know(self):
         new_dept_know = self.task - self.model.dept_know[self.dept]['dist']
         plt.figure(figsize=(10,6))
@@ -113,7 +113,7 @@ class KnowledgePlots(object):
         plt.xlabel('Knowledge Categories')
         plt.ylabel('Knowledge Quantity')
         plt.show()
-    
+
     def plot_new_comp_know(self):
         new_comp_know = self.task - self.model.comp_know
         plt.figure(figsize=(10,6))
@@ -146,10 +146,10 @@ class KnowledgePlots(object):
         plt.xlabel('Knowledge Categories')
         plt.ylabel('Knowledge Quantity')
         plt.show()
-    
+
     def plot_emp_task(self):
         emp_know_gain = self.emp_know - self.emp_know_pre_task
-    
+
         plt.figure(figsize=(10,6))
         plt.bar(self.emp_know_pre_task.keys(),
                 self.emp_know_pre_task.values(),
@@ -210,10 +210,10 @@ class KnowledgePlots(object):
         plt.xlabel('Knowledge Categories')
         plt.ylabel('Knowledge Quantity')
         plt.show()
-        
+
     def plot_library_task(self):
         emp_know_gain = self.emp_know - self.emp_know_pre_task
-    
+
         plt.figure(figsize=(10,6))
         plt.bar(self.emp_know_pre_task.keys(),
                 self.emp_know_pre_task.values(),
@@ -251,12 +251,12 @@ class KnowledgePlots(object):
         plt.xlabel('Knowledge Categories')
         plt.ylabel('Knowledge Quantity')
         plt.show()
-    
+
     def plot_emp_research(self):
         emp_know_gain = self.emp_know - self.emp_know_pre_task
         breakthrough = self.know_cat_research - self.emp_know
         research = self.know_cat_research - breakthrough
-    
+
         plt.figure(figsize=(10,6))
         plt.bar(self.emp_know_pre_task.keys(),
                 self.emp_know_pre_task.values(),
@@ -303,10 +303,10 @@ class KnowledgePlots(object):
         plt.xlabel('Knowledge Categories')
         plt.ylabel('Knowledge Quantity')
         plt.show()
-    
+
     def plot_emp_know_post_task(self):
         emp_know_gain = self.emp_know - self.emp_know_pre_task
-    
+
         plt.figure(figsize=(10,6))
         plt.bar(self.emp_know_pre_task.keys(),
                 self.emp_know_pre_task.values(),
@@ -342,7 +342,7 @@ class KnowledgePlots(object):
         plt.xlabel('Knowledge Categories')
         plt.ylabel('Knowledge Quantity')
         plt.show()
-        
+
     def plot_company_know(self):
         # plot company knowledge for each department
         plt.figure(figsize=(10,6))
@@ -370,7 +370,7 @@ class KnowledgePlots(object):
         plt.xlabel('Knowledge Categories')
         plt.ylabel('Knowledge Quantity')
         plt.show()
-        
+
     def plot_company_know_subplots(self):
         # plot distributions on subplots
         _,axis = plt.subplots(2, 2, figsize=(10,6))
@@ -387,7 +387,7 @@ class KnowledgePlots(object):
         axis[0][0].minorticks_on()
         axis[0][0].tick_params(axis='x', which='minor', length=5, width=1)
         axis[0][0].tick_params(axis='x', which='major', length=7, width=2)
-    
+
         axis[0][1].bar(self.dept_know['SW']['dist'].keys(),
                 self.dept_know['SW']['dist'].values(),
                   color='green', alpha=0.5, label='SE', width=1)
@@ -401,7 +401,7 @@ class KnowledgePlots(object):
         axis[0][1].minorticks_on()
         axis[0][1].tick_params(axis='x', which='minor', length=5, width=1)
         axis[0][1].tick_params(axis='x', which='major', length=7, width=2)
-    
+
         axis[1][0].bar(self.dept_know['EE']['dist'].keys(),
                 self.dept_know['EE']['dist'].values(),
                   color='yellow', alpha=0.5, label='SE', width=1)
@@ -415,7 +415,7 @@ class KnowledgePlots(object):
         axis[1][0].minorticks_on()
         axis[1][0].tick_params(axis='x', which='minor', length=5, width=1)
         axis[1][0].tick_params(axis='x', which='major', length=7, width=2)
-    
+
         axis[1][1].bar(self.dept_know['ME']['dist'].keys(),
                 self.dept_know['ME']['dist'].values(),
                   color='blue', alpha=0.25, label='SE', width=1)
@@ -429,6 +429,6 @@ class KnowledgePlots(object):
         axis[1][1].minorticks_on()
         axis[1][1].tick_params(axis='x', which='minor', length=5, width=1)
         axis[1][1].tick_params(axis='x', which='major', length=7, width=2)
-    
+
         plt.tight_layout()
         plt.show()

@@ -5,6 +5,7 @@ Created on Tue Dec 27 20:55:49 2022
 @author: Lewis
 """
 from collections import Counter
+import time
 import mesa
 import numpy as np
 import pandas as pd
@@ -29,37 +30,21 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         self.document_know_ct = 0
         self.model = model
         self.task_completed = True
-        # Status: Idle, Teaching, Learning, Documenting, Reading, Researching
+        # Status: avail, Teaching, Learning, docs, Reading, Researching
         # Coworker: Name, None
-        self.status = 'Idle'
+        self.status = 'avail'
         self.coworker = 'None'
         self.task = Counter()
         self.emp_know_to_learn = Counter()
         self.emp_remain_know_to_learn = Counter()
         self.know_cat_research = Counter()
 
-# To Dos
-# Figure out profiling to see what functions are taking the longest to run
-
     def step(self):
         # the end of a step is initaited by
         # 1. Employee gains new knowledge
         # 2. Employee completes a task
 
-        # agent has been assigned to produce documentation
-        if self.status == 'Documenting':
-            # Check if agent is successfully able to document anything
-            if self.document_know():
-                self.document_know_ct += 1
-                self.log_step_data() # if success, log data and exit step
-                return
-            # if the agent has nothing to document, they should work on their task
-            # Set status back to Idle
-            self.status = 'Idle'
-
-        # agent must be available to continue step
-        if (self.status != 'Idle') & (self.status != 'Working'):
-            return
+        # start_time = time.time()
 
         # before starting step, see if employee is eligable for promotion
         self.check_for_promotion() # maybe only promote when a task is completed ???????
@@ -75,12 +60,31 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
                       ' This should never happen')
                 return
 
+        # agent has been assigned to produce documentation
+        if self.status == 'docs':
+            # Check if agent is successfully able to document anything
+            if self.document_know():
+                self.document_know_ct += 1
+                self.log_step_data() # if success, log data and exit step
+                # print("%s docs" % int((time.time() - start_time)*1000))
+                return
+            # if the agent has nothing to document, they should work on their task
+            # Set status back to avail
+            self.status = 'avail'
+
+        # agent must be available to continue step
+        if (self.status != 'avail') & (self.status != 'busy'):
+            # print("%s Helping" % int((time.time() - start_time)*1000))
+            self.log_step_data()
+            return
+
         # before searching for help, agents should use the company library
         # as much as possible to complete their task
         if self.check_comp_library():
             if self.check_for_task_completion():
                 self.update_company_and_dept_know()
             self.log_step_data()
+            # print("%s Reading" % int((time.time() - start_time)*1000))
             return
 
         # Search for help on tasks so they can be finished quicker
@@ -88,6 +92,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
             if self.check_for_task_completion():
                 self.update_company_and_dept_know()
             self.log_step_data()
+            # print("%s Learning" % int((time.time() - start_time)*1000))
             return
 
         # if no help is currently availalbe, they should research the low hanging fruit
@@ -96,6 +101,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         if self.check_for_task_completion():
             self.update_company_and_dept_know()
         self.log_step_data()
+        # print("%s Researching" % int((time.time() - start_time)*1000))
 
     def check_comp_library(self):
         # first loop through all remaining know to learn ordering from most
@@ -135,7 +141,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
             # with the lowest ranking employee
             for agent in reversed(self.model.schedule.agents):
                 if ((agent.emp_know[know_cat] - self.emp_know[know_cat]) > 1
-                    and agent.status == 'Idle'):
+                    and agent.status == 'avail'):
 
                     # self.plot_employee_help_know_cat(know_cat, agent)
 
@@ -239,6 +245,15 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
 
     def log_step_data(self):
         self.model.step_data.append({
+        'config_num': self.model.config_num,
+        'num_emp': self.model.num_employees,
+        'avail': self.model.avail,
+        'busy': self.model.busy,
+        'docs': self.model.docs,
+        'know_cat_ct': self.model.know_cat_ct,
+        'max_know': self.model.max_know,
+        'innov_rate': self.model.innovation_rate,
+        'seed': self.model.seed,
         'step': self.model.step_num,
         'employee_id': self.emp_id,
         'employee_name': self.name,
@@ -258,6 +273,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         'SW_dept_know': len(list(self.model.dept_know['SW']['dist'].elements())),
         'EE_dept_know': len(list(self.model.dept_know['EE']['dist'].elements())),
         'ME_dept_know': len(list(self.model.dept_know['ME']['dist'].elements())),
+        'comp_lib_know': len(list(self.model.comp_library.elements())),
         'comp_know': len(list(self.model.comp_know.elements()))})
 
     def check_for_promotion(self):
@@ -304,6 +320,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
             task = np.random.normal(self.model.dept_know[self.dept]['mu'],
                                        self.model.dept_know[self.dept]['sigma'],
                                        task_level).astype(int)
+            task %= self.model.know_cat_ct
             task[task>=self.model.know_cat_ct/2] -= self.model.know_cat_ct
             task[task<-self.model.know_cat_ct/2] += self.model.know_cat_ct
             self.task = Counter(task)
@@ -322,23 +339,30 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
 class KnowledgeModel(mesa.Model, KnowledgePlots):
     """A model with some number of agents."""
 
-    def __init__(self, N, seed=None):
+    def __init__(self, num_emp, avail, busy, know_cat_ct,
+                 max_know, innov_rate, config_num, seed=None):
         super().__init__(seed=seed)
         # company parameters
-        self.innovation_rate = 0.5 # value must be betwen 0 and 1
-        self.know_cat_ct = 1000
+        self.config_num = config_num
+        self.innovation_rate = innov_rate # value must be betwen 0 and 1
+        self.know_cat_ct = know_cat_ct
         self.know_cats = list(np.arange(self.know_cat_ct).astype(int)
                               - int(self.know_cat_ct/2))
-        self.max_know = 10000
-        self.num_employees = N
+        self.max_know = max_know
+        self.num_employees = num_emp
         self.comp_task_num = 0
         self.task_dict = {}
         self.roster = []
         self.step_num = -1
-        np.random.seed(0)
+        self.seed = seed
+        np.random.seed(seed)
 
-        self.assigned_states = ['Idle', 'Working', 'Documenting']
-        self.state_prob = [0.7, 0.2, 0.1]
+        self.avail = avail
+        self.busy = busy
+        self.docs = abs(round(1 - avail - busy, 2))
+        self.assigned_states = ['avail', 'busy', 'docs']
+        self.state_prob = [self.avail, self.busy, self.docs]
+        print(self.state_prob)
 
         # department descriptive statistics
         self.dept_know = {'SE': {'mu': 0, 'sigma': self.know_cat_ct/3},
@@ -355,8 +379,8 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
 
         # create company knowledge
         self.create_company_know_dist()
-        self.plot_company_know()
-        #self.plot_company_know_subplots()
+        # self.plot_company_know()
+        # self.plot_company_know_subplots()
 
         # generate company employees
         name_list = self.create_employee_name_list()
@@ -404,6 +428,7 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
                                    self.dept_know['SE']['sigma'],
                                    self.max_know).astype(int)
         # wrap to +/- self.know_cat_ct/2 to create department overlap
+        se_know %= self.know_cat_ct
         se_know[se_know>=self.know_cat_ct/2] -= self.know_cat_ct
         se_know[se_know<-self.know_cat_ct/2] += self.know_cat_ct
         self.dept_know['SE']['dist'] = Counter(se_know)
@@ -414,6 +439,7 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
                                    self.dept_know['SW']['sigma'],
                                    self.max_know).astype(int)
         # wrap to +/- self.know_cat_ct/2 for department overlap
+        sw_know %= self.know_cat_ct
         sw_know[sw_know>=self.know_cat_ct/2] -= self.know_cat_ct
         sw_know[sw_know<-self.know_cat_ct/2] += self.know_cat_ct
         self.dept_know['SW']['dist'] = Counter(sw_know)
@@ -423,6 +449,7 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
                                    self.dept_know['EE']['sigma'],
                                    self.max_know).astype(int)
         # wrap to +/- self.know_cat_ct/2 for department overlap
+        ee_know %= self.know_cat_ct
         ee_know[ee_know>=self.know_cat_ct/2] -= self.know_cat_ct
         ee_know[ee_know<-self.know_cat_ct/2] += self.know_cat_ct
         self.dept_know['EE']['dist'] = Counter(ee_know)
@@ -432,6 +459,7 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
                                    self.dept_know['ME']['sigma'],
                                    self.max_know).astype(int)
         # wrap to +/- self.know_cat_ct/2 for department overlap
+        me_know %= self.know_cat_ct
         me_know[me_know>=self.know_cat_ct/2] -= self.know_cat_ct
         me_know[me_know<-self.know_cat_ct/2] += self.know_cat_ct
         self.dept_know['ME']['dist'] = Counter(me_know)
@@ -466,6 +494,7 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
         know = np.random.normal(self.dept_know[dept]['mu'],
                                 self.dept_know[dept]['sigma'],
                                 start_know).astype(int)
+        know %= self.know_cat_ct
         know[know>=self.know_cat_ct/2] -= self.know_cat_ct
         know[know<-self.know_cat_ct/2] += self.know_cat_ct
         return Counter(know)
@@ -484,6 +513,7 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
         #self.datacollector.collect(self)
         self.step_num += 1
         self.order_agents_by_know()
+
 
         # assign all agent statuses for the step
         for agt in self.schedule.agents:
