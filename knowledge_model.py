@@ -167,7 +167,13 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         # where the knowledge quantity is the least
 
         # this is the know that the employee has that is not in the library
-        know_diff = self.emp_know - self.model.comp_library
+        # know_diff = self.emp_know - self.model.comp_library
+
+        # employees can only document knowledge from their current task
+        # know_diff = self.task - self.emp_remain_know_to_learn - self.model.comp_library
+
+        # employees can only document new knowledge from their current task
+        know_diff = self.emp_know - self.emp_know_pre_task - self.model.comp_library
 
         # if the employee has no know to contribute, do some other activity
         if not know_diff:
@@ -178,6 +184,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         for know_cat in know_diff.keys():
             if self.model.comp_library[know_cat] == 0:
                 self.model.comp_library[know_cat] += 1
+                self.model.comp_library_log.append((self.model.step_num, know_cat))
                 return True
 
         # if there is at least some knowledge in every know_cat, then add know
@@ -186,6 +193,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
             know_cat = i[0]
             if know_diff[know_cat] > 0:
                 self.model.comp_library[know_cat] += 1
+                self.model.comp_library_log.append((self.model.step_num, know_cat))
                 return True
 
         # it shouldn't be possible to reach this point
@@ -302,7 +310,8 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
     def get_new_task(self):
         task_level = int(self.exp * self.model.innovation_rate)
         self.emp_know_to_learn = Counter()
-
+        count = 0
+        task_time = time.time()
         # There is no such thing as a mindless job in 2023
         # Employees should not be assigned a task where ZERO new knowledge
         # is required to complete the task. If an employee's job scope is so
@@ -317,6 +326,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         # this while loop generates a new task. If the generated task does not
         # require any new knowledge, then stay in the while loop
         while not self.emp_know_to_learn:
+            count += 1
             task = np.random.normal(self.model.dept_know[self.dept]['mu'],
                                        self.model.dept_know[self.dept]['sigma'],
                                        task_level).astype(int)
@@ -335,7 +345,9 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         self.task_completed = False
         # increment comp task number so next assigned task has unique number
         self.model.comp_task_num += 1
-
+        if count > 20:
+            print("New Task Attempts: %s" % count)
+            print("New Task Time Time %.6f" % (time.time() - task_time))
 class KnowledgeModel(mesa.Model, KnowledgePlots):
     """A model with some number of agents."""
 
@@ -362,7 +374,6 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
         self.docs = abs(round(1 - avail - busy, 2))
         self.assigned_states = ['avail', 'busy', 'docs']
         self.state_prob = [self.avail, self.busy, self.docs]
-        print(self.state_prob)
 
         # department descriptive statistics
         self.dept_know = {'SE': {'mu': 0, 'sigma': self.know_cat_ct/3},
@@ -370,6 +381,7 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
                      'EE': {'mu': self.know_cat_ct/2, 'sigma': self.know_cat_ct/5},
                      'ME': {'mu': self.know_cat_ct/-4, 'sigma': self.know_cat_ct/5}}
         self.comp_library = Counter()
+        self.comp_library_log = []
 
         # model parameters
         self.schedule = mesa.time.RandomActivation(self)
@@ -508,12 +520,31 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
         self.schedule._agents = {i : self.schedule._agents[k]
                         for i, k in enumerate(agent_keys)}
 
+    def remove_obsolete_library_data(self):
+        # documentation is obsolete after a few years and is less valuable
+        # There is an inflection point around the library and the number of
+        # employees in the company. More employees allow more knowledge to be
+        # added to the library before it becomes obsolete. As more knowledege
+        # is documented, employees helping eachother becomes less effective
+        # because employees can rely on the library for more efficient knowledge
+        # transfer. The efficiency of library knowledge transfer outweighs the
+        # time investment for employees spending time to write down knowledge.
+
+        ob_ratio = 0.02 # corresponds to 1 year obsolecence
+        # ob_ratio = 0.08 # corresponds to 4 year obsolecence
+        for log in self.comp_library_log:
+            if log[0] < (self.step_num - self.max_know*ob_ratio):
+                self.comp_library[log[1]] -= 1
+
+        self.comp_library_log = [l for l in self.comp_library_log
+                                 if l[0] >= (self.step_num - self.max_know*ob_ratio)]
+
     def step(self):
         """Advance the model by one step."""
         #self.datacollector.collect(self)
         self.step_num += 1
         self.order_agents_by_know()
-
+        self.remove_obsolete_library_data()
 
         # assign all agent statuses for the step
         for agt in self.schedule.agents:

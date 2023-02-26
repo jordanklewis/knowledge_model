@@ -29,19 +29,58 @@ model_data = []
 # corresponding max_know - 100,000, 12,500, 2,500, 600
 
 
+# Current issue
+# with more employees to contribute to the library, it becomes possible to 
+# document almost all company knowledge allowing all employees to easily find
+# the ansers they need for their tasks. This is not realistic to real life.
+# Need to figure out how to better model this. It seems that adding more
+# know_cat_ct solves this issue because there are more know_cats that need
+# to be documented.
+
+# Tasks also have no deadline. Need to analyze the duration to complete tasks
+# for each employee. Tasks are taking too long. A task shouldn't take an employee
+# 15 months to complete. What variable relationship effects task duration?
+# Task duration is impacted by innov_rate. Need to tune library and innov_rate
+# to create a realistic use of library.
+
+# The biggest contributors to company knowledge growth are the expert employees.
+# The more experts in the populaiton pyramid, the more comp know growth is 
+# expected.
+
+# 3750 with 20 employees in 0.1 avail/busy increments took 3.6 hours
+
+# next step: Need to make a plot that verifies what the employees actually do
+# when they are commanded.
+
+# 3 commands: Available, Busy, Documenting
+# 5 outcomes: Researching, Teaching, Learning, Reading, Documenting
+
+# How do these commands and outcomes trace?
+
+
+# some how, total company knowledge needs to scale with employee count. What
+# is the logical way to model this?
+
+# maybe knowledge categories should scale with employees?
+
+
 steps = 180
 max_know = int(steps/0.3)
-know_cat_ct = int(max_know/10)
+# know_cat_ct = int(max_know/10)
+know_cat_ct = int(max_know/5)
+# know_cat_ct = int(max_know/2.5)
 
-num_emp=10
+num_emp=500
 # know_cat_ct=200
 # max_know=2000
-innov_rate=0.5
-seed=0
+innov_rate=0.25
+seed=2
 
 for i in range(20, 100, 10):
     for w in range(20, 100, 10):
         if (i + w) > 100:
+            continue
+        if (i + w) <= 50:
             continue
         config_num += 1
         avail = i/100
@@ -75,15 +114,14 @@ comp_task_value = {}
 for c in np.unique(model_data.config_num):
     keys = (list(model_data.avail[model_data.config_num==c])[-1],
             list(model_data.busy[model_data.config_num==c])[-1])
-    comp_task_value[keys] = model_data.task_complexity[(model_data.task_completed is True)
+    comp_task_value[keys] = model_data.task_complexity[(model_data.task_completed)
                                 & (model_data.config_num==c)].sum()
-
 ser = pd.Series(list(comp_task_value.values()),
                   index=pd.MultiIndex.from_tuples(comp_task_value.keys()))
 df = ser.unstack()
 
 plt.figure(figsize=(10,6))
-ax = sns.heatmap(df, annot=True, cmap='coolwarm', robust=True)
+ax = sns.heatmap(df, annot=True, fmt='.0f', cmap='coolwarm', robust=True)
 ax.invert_yaxis()
 plt.xlabel('Busy')
 plt.ylabel('Available')
@@ -94,6 +132,144 @@ plt.title('Company Task Value\n'
           + '    Innov Rate: ' + str(model_data.innov_rate.iloc[-1])
           + '    Seed: ' + str(model_data.seed.iloc[-1]))
 plt.show()
+
+
+comp_know = {}
+for c in np.unique(model_data.config_num):
+    keys = (list(model_data.avail[model_data.config_num==c])[-1],
+            list(model_data.busy[model_data.config_num==c])[-1])
+    comp_know[keys] = model_data.comp_know[model_data.config_num==c].iloc[-1]
+ser = pd.Series(list(comp_know.values()),
+                  index=pd.MultiIndex.from_tuples(comp_know.keys()))
+df = ser.unstack()
+
+plt.figure(figsize=(10,6))
+ax = sns.heatmap(df, annot=True, fmt=".0f", cmap='coolwarm', robust=True)
+ax.invert_yaxis()
+plt.xlabel('Busy')
+plt.ylabel('Available')
+plt.title('Company Knowledge Growth\n'
+          + 'Num Emp: ' + str(model_data.num_emp.iloc[-1])
+          + '    Know Cat Ct: ' + str(model_data.know_cat_ct.iloc[-1])
+          + '    Max_Know: ' + str(model_data.max_know.iloc[-1])
+          + '    Innov Rate: ' + str(model_data.innov_rate.iloc[-1])
+          + '    Seed: ' + str(model_data.seed.iloc[-1]))
+plt.show()
+
+
+know_pct = {}
+for c in np.unique(model_data.config_num):
+    keys = (list(model_data.avail[model_data.config_num==c])[-1],
+            list(model_data.busy[model_data.config_num==c])[-1])
+    know = model_data[['document_know']][model_data.config_num==c].sum().iloc[0]
+    total = model_data[['research_know',
+                        'learn_know',
+                        'teach_know',
+                        'document_know',
+                        'read_know']][model_data.config_num==c].sum().sum()
+    know_pct[keys] = round(know/total*100)
+ser = pd.Series(list(know_pct.values()),
+                  index=pd.MultiIndex.from_tuples(know_pct.keys()))
+df = ser.unstack()
+
+plt.figure(figsize=(10,6))
+ax = sns.heatmap(df, annot=True, fmt=".0f", cmap='coolwarm', robust=True)
+ax.invert_yaxis()
+plt.xlabel('Busy')
+plt.ylabel('Available')
+plt.title('Percentage of Time Spent Documenting\n'
+          + 'Num Emp: ' + str(model_data.num_emp.iloc[-1])
+          + '    Know Cat Ct: ' + str(model_data.know_cat_ct.iloc[-1])
+          + '    Max_Know: ' + str(model_data.max_know.iloc[-1])
+          + '    Innov Rate: ' + str(model_data.innov_rate.iloc[-1])
+          + '    Seed: ' + str(model_data.seed.iloc[-1]))
+plt.show()
+
+know_pct = {}
+for c in np.unique(model_data.config_num):
+    keys = (list(model_data.avail[model_data.config_num==c])[-1],
+            list(model_data.busy[model_data.config_num==c])[-1])
+    know = model_data[['read_know']][model_data.config_num==c].sum().iloc[0]
+    total = model_data[['research_know',
+                        'learn_know',
+                        'teach_know',
+                        'document_know',
+                        'read_know']][model_data.config_num==c].sum().sum()
+    know_pct[keys] = round(know/total*100)
+ser = pd.Series(list(know_pct.values()),
+                  index=pd.MultiIndex.from_tuples(know_pct.keys()))
+df = ser.unstack()
+
+plt.figure(figsize=(10,6))
+ax = sns.heatmap(df, annot=True, fmt=".0f", cmap='coolwarm', robust=True)
+ax.invert_yaxis()
+plt.xlabel('Busy')
+plt.ylabel('Available')
+plt.title('Percentage of Time Spent Reading\n'
+          + 'Num Emp: ' + str(model_data.num_emp.iloc[-1])
+          + '    Know Cat Ct: ' + str(model_data.know_cat_ct.iloc[-1])
+          + '    Max_Know: ' + str(model_data.max_know.iloc[-1])
+          + '    Innov Rate: ' + str(model_data.innov_rate.iloc[-1])
+          + '    Seed: ' + str(model_data.seed.iloc[-1]))
+plt.show()
+
+know_pct = {}
+for c in np.unique(model_data.config_num):
+    keys = (list(model_data.avail[model_data.config_num==c])[-1],
+            list(model_data.busy[model_data.config_num==c])[-1])
+    know = model_data[['research_know']][model_data.config_num==c].sum().iloc[0]
+    total = model_data[['research_know',
+                        'learn_know',
+                        'teach_know',
+                        'document_know',
+                        'read_know']][model_data.config_num==c].sum().sum()
+    know_pct[keys] = round(know/total*100)
+ser = pd.Series(list(know_pct.values()),
+                  index=pd.MultiIndex.from_tuples(know_pct.keys()))
+df = ser.unstack()
+
+plt.figure(figsize=(10,6))
+ax = sns.heatmap(df, annot=True, fmt=".0f", cmap='coolwarm', robust=True)
+ax.invert_yaxis()
+plt.xlabel('Busy')
+plt.ylabel('Available')
+plt.title('Percentage of Time Spent Researching\n'
+          + 'Num Emp: ' + str(model_data.num_emp.iloc[-1])
+          + '    Know Cat Ct: ' + str(model_data.know_cat_ct.iloc[-1])
+          + '    Max_Know: ' + str(model_data.max_know.iloc[-1])
+          + '    Innov Rate: ' + str(model_data.innov_rate.iloc[-1])
+          + '    Seed: ' + str(model_data.seed.iloc[-1]))
+plt.show()
+
+know_pct = {}
+for c in np.unique(model_data.config_num):
+    keys = (list(model_data.avail[model_data.config_num==c])[-1],
+            list(model_data.busy[model_data.config_num==c])[-1])
+    know = model_data[['learn_know']][model_data.config_num==c].sum().iloc[0]
+    total = model_data[['research_know',
+                        'learn_know',
+                        'teach_know',
+                        'document_know',
+                        'read_know']][model_data.config_num==c].sum().sum()
+    know_pct[keys] = round(know/total*100)
+ser = pd.Series(list(know_pct.values()),
+                  index=pd.MultiIndex.from_tuples(know_pct.keys()))
+df = ser.unstack()
+
+plt.figure(figsize=(10,6))
+ax = sns.heatmap(df, annot=True, fmt=".0f", cmap='coolwarm', robust=True)
+ax.invert_yaxis()
+plt.xlabel('Busy')
+plt.ylabel('Available')
+plt.title('Percentage of Time Spent Learning/Teaching\n'
+          + 'Num Emp: ' + str(model_data.num_emp.iloc[-1])
+          + '    Know Cat Ct: ' + str(model_data.know_cat_ct.iloc[-1])
+          + '    Max_Know: ' + str(model_data.max_know.iloc[-1])
+          + '    Innov Rate: ' + str(model_data.innov_rate.iloc[-1])
+          + '    Seed: ' + str(model_data.seed.iloc[-1]))
+plt.show()
+
+
 
 model.plot_company_know()
 model.plot_company_know_subplots()
@@ -107,7 +283,12 @@ plt.grid()
 plt.barh(labels, values)
 plt.ylabel('Experience Level')
 plt.xlabel('Employee Count')
-plt.title('Employee Populaiton Pyramid')
+plt.title('Employee Populaiton Pyramid\n'
+          + 'Num Emp: ' + str(model_data.num_emp.iloc[-1])
+          + '    Know Cat Ct: ' + str(model_data.know_cat_ct.iloc[-1])
+          + '    Max_Know: ' + str(model_data.max_know.iloc[-1])
+          + '    Innov Rate: ' + str(model_data.innov_rate.iloc[-1])
+          + '    Seed: ' + str(model_data.seed.iloc[-1]))
 plt.show()
 
 # create a step aggregate data frame
@@ -128,7 +309,7 @@ for c in np.unique(model_data.config_num):
                           'innov_rate': model_data_step.innov_rate.iloc[-1],
                           'seed': model_data_step.seed.iloc[-1],
                           'task_count': model_data_step.task_completed.sum(),
-                          'task_value': model_data_step.task_complexity[model_data_step.task_completed is True].sum(),
+                          'task_value': model_data_step.task_complexity[model_data_step.task_completed].sum(),
                           'research_know': model_data_step.research_know.iloc[-1],
                           'learn_know': model_data_step.learn_know.iloc[-1],
                           'teach_know': model_data_step.teach_know.iloc[-1],
@@ -158,29 +339,50 @@ plt.title('Company Library Knowledge\n'
           + '    Max_Know: ' + str(step_agg_df.max_know.iloc[-1])
           + '    Innov Rate: ' + str(step_agg_df.innov_rate.iloc[-1])
           + '    Seed: ' + str(step_agg_df.seed.iloc[-1]))
-plt.legend()
+# plt.legend(loc='outside right')
+plt.legend(bbox_to_anchor =(1, 1.15))
 plt.xlabel('Step')
 plt.ylabel('Knowledge Quantity')
 plt.show()
 
-plt.figure(figsize=(10,6))
-plt.grid()
-for c in np.unique(step_agg_df.config_num):
-    config_filt = step_agg_df[step_agg_df.config_num==c]
-    plt.plot(config_filt.step, config_filt.comp_know,
-             label = "A:%s W:%s D: %s" % (config_filt.avail.iloc[-1],
-                                          config_filt.busy.iloc[-1],
-                                          config_filt.docs.iloc[-1]))
-plt.title('Company Knowledge\n'
-          + 'Num Emp: ' + str(step_agg_df.num_emp.iloc[-1])
-          + '    Know Cat Ct: ' + str(step_agg_df.know_cat_ct.iloc[-1])
-          + '    Max_Know: ' + str(step_agg_df.max_know.iloc[-1])
-          + '    Innov Rate: ' + str(step_agg_df.innov_rate.iloc[-1])
-          + '    Seed: ' + str(step_agg_df.seed.iloc[-1]))
-plt.legend()
-plt.xlabel('Step')
-plt.ylabel('Knowledge Quantity')
-plt.show()
+# plt.figure(figsize=(10,6))
+# plt.grid()
+# for c in np.unique(step_agg_df.config_num):
+#     config_filt = step_agg_df[step_agg_df.config_num==c]
+#     plt.plot(config_filt.step, np.cumsum(config_filt.task_value),
+#              label = "A:%s W:%s D: %s" % (config_filt.avail.iloc[-1],
+#                                           config_filt.busy.iloc[-1],
+#                                           config_filt.docs.iloc[-1]))
+# plt.title('Company Task Value\n'
+#           + 'Num Emp: ' + str(step_agg_df.num_emp.iloc[-1])
+#           + '    Know Cat Ct: ' + str(step_agg_df.know_cat_ct.iloc[-1])
+#           + '    Max_Know: ' + str(step_agg_df.max_know.iloc[-1])
+#           + '    Innov Rate: ' + str(step_agg_df.innov_rate.iloc[-1])
+#           + '    Seed: ' + str(step_agg_df.seed.iloc[-1]))
+# plt.legend(bbox_to_anchor =(1, 1.15))
+# plt.xlabel('Step')
+# plt.ylabel('Task Value')
+# plt.show()
+
+
+# plt.figure(figsize=(10,6))
+# plt.grid()
+# for c in np.unique(step_agg_df.config_num):
+#     config_filt = step_agg_df[step_agg_df.config_num==c]
+#     plt.plot(config_filt.step, config_filt.comp_know,
+#               label = "A:%s W:%s D: %s" % (config_filt.avail.iloc[-1],
+#                                           config_filt.busy.iloc[-1],
+#                                           config_filt.docs.iloc[-1]))
+# plt.title('Company Knowledge\n'
+#           + 'Num Emp: ' + str(step_agg_df.num_emp.iloc[-1])
+#           + '    Know Cat Ct: ' + str(step_agg_df.know_cat_ct.iloc[-1])
+#           + '    Max_Know: ' + str(step_agg_df.max_know.iloc[-1])
+#           + '    Innov Rate: ' + str(step_agg_df.innov_rate.iloc[-1])
+#           + '    Seed: ' + str(step_agg_df.seed.iloc[-1]))
+# plt.legend(bbox_to_anchor =(1, 1.15))
+# plt.xlabel('Step')
+# plt.ylabel('Knowledge Quantity')
+# plt.show()
 
 
 # create an employee aggregate data frame
@@ -207,7 +409,7 @@ for c in np.unique(model_data.config_num):
                           'know_growth': (model_data_emp.total_knowledge.iloc[-1]
                                           - model_data_emp.total_knowledge.iloc[0]),
                           'task_count': model_data_emp.task_completed.sum(),
-                          'task_value': model_data_emp.task_complexity[model_data_emp.task_completed is True].sum(),
+                          'task_value': model_data_emp.task_complexity[model_data_emp.task_completed].sum(),
                           'research_know': model_data_emp.research_know.iloc[-1],
                           'learn_know': model_data_emp.learn_know.iloc[-1],
                           'teach_know': model_data_emp.teach_know.iloc[-1],
@@ -217,82 +419,196 @@ for c in np.unique(model_data.config_num):
     model_agg = pd.DataFrame(model_agg).sort_values(['start_know'])
     emp_agg_df = pd.concat([emp_agg_df, model_agg], ignore_index=True)
 
-plt.figure(figsize=(10,6))
-plt.grid()
-for c in np.unique(emp_agg_df.config_num):
+avail_arr = np.unique(emp_agg_df.avail)
+busy_arr = np.unique(emp_agg_df.busy)
+fig,axis = plt.subplots(len(avail_arr),
+                        len(busy_arr),
+                        figsize=(10,6), sharex=True,
+                        sharey=True,constrained_layout=True)
+for a in axis:
+    for aa in a:
+        aa.axis('off')
+for c in np.unique(model_data.config_num):
     config_filt = emp_agg_df[emp_agg_df.config_num==c]
-    plt.plot(config_filt.start_know, config_filt.know_growth,
-             label = "A:%s W:%s D: %s" % (config_filt.avail.iloc[-1],
-                                          config_filt.busy.iloc[-1],
-                                          config_filt.docs.iloc[-1]))
-plt.title('Employee Knowledge Growth\n'
+    row = len(avail_arr) - np.where(avail_arr == config_filt.avail.iloc[-1])[0][0] -1
+    col = np.where(busy_arr == config_filt.busy.iloc[-1])[0][0]
+    axis[row][col].stackplot(config_filt.start_know, config_filt.research_know,
+                  config_filt.learn_know, config_filt.read_know,
+                  labels = ['Research', 'Learn', 'Read'])
+    axis[row][col].axis('on')
+    if row == len(avail_arr)-1:
+        axis[row][col].set_xlabel(str(config_filt.busy.iloc[-1]))
+    if col == 0:
+        axis[row][col].set_ylabel(str(config_filt.avail.iloc[-1]))
+fig.suptitle('Employee Knowledge Source\n'
           + 'Num Emp: ' + str(emp_agg_df.num_emp.iloc[-1])
           + '    Know Cat Ct: ' + str(emp_agg_df.know_cat_ct.iloc[-1])
           + '    Max_Know: ' + str(emp_agg_df.max_know.iloc[-1])
           + '    Innov Rate: ' + str(emp_agg_df.innov_rate.iloc[-1])
           + '    Seed: ' + str(emp_agg_df.seed.iloc[-1]))
-plt.legend()
-plt.xlabel('Start Know Quantity')
-plt.ylabel('Know Growth Quantity')
+fig.supxlabel('Start Know Quantity\nBusy')
+fig.supylabel('Available\nKnow Growth')
+h, l = axis[row][col].get_legend_handles_labels()
+fig.legend(h, l)
+fig.tight_layout()
 plt.show()
 
-plt.figure(figsize=(10,6))
-plt.grid()
-for c in np.unique(emp_agg_df.config_num):
+avail_arr = np.unique(emp_agg_df.avail)
+busy_arr = np.unique(emp_agg_df.busy)
+fig,axis = plt.subplots(len(avail_arr),
+                        len(busy_arr),
+                        figsize=(10,6), sharex=True,
+                        sharey=True,constrained_layout=True)
+for a in axis:
+    for aa in a:
+        aa.axis('off')
+for c in np.unique(model_data.config_num):
     config_filt = emp_agg_df[emp_agg_df.config_num==c]
-    plt.plot(config_filt.start_know, config_filt.task_value,
-             label = "A:%s W:%s D: %s" % (config_filt.avail.iloc[-1],
-                                          config_filt.busy.iloc[-1],
-                                          config_filt.docs.iloc[-1]))
-plt.title('Employee Task Value\n'
+    row = len(avail_arr) - np.where(avail_arr == config_filt.avail.iloc[-1])[0][0] -1
+    col = np.where(busy_arr == config_filt.busy.iloc[-1])[0][0]
+    axis[row][col].stackplot(config_filt.start_know, config_filt.teach_know,
+                  config_filt.doc_know,
+                  labels = ['Teach', 'Document'])
+    axis[row][col].axis('on')
+    if row == len(avail_arr)-1:
+        axis[row][col].set_xlabel(str(config_filt.busy.iloc[-1]))
+    if col == 0:
+        axis[row][col].set_ylabel(str(config_filt.avail.iloc[-1]))
+fig.suptitle('Employee Knowledge Transfer Method\n'
           + 'Num Emp: ' + str(emp_agg_df.num_emp.iloc[-1])
           + '    Know Cat Ct: ' + str(emp_agg_df.know_cat_ct.iloc[-1])
           + '    Max_Know: ' + str(emp_agg_df.max_know.iloc[-1])
           + '    Innov Rate: ' + str(emp_agg_df.innov_rate.iloc[-1])
           + '    Seed: ' + str(emp_agg_df.seed.iloc[-1]))
-plt.legend()
-plt.xlabel('Start Know Quantity')
-plt.ylabel('Task Value')
+fig.supxlabel('Start Know Quantity\nBusy')
+fig.supylabel('Available\nKnow Share')
+h, l = axis[row][col].get_legend_handles_labels()
+fig.legend(h, l)
+fig.tight_layout()
 plt.show()
 
-plt.figure(figsize=(10,6))
-plt.grid()
-for c in np.unique(emp_agg_df.config_num):
+
+avail_arr = np.unique(emp_agg_df.avail)
+busy_arr = np.unique(emp_agg_df.busy)
+fig,axis = plt.subplots(len(avail_arr),
+                        len(busy_arr),
+                        figsize=(10,6), sharex=True,
+                        sharey=True,constrained_layout=True)
+for a in axis:
+    for aa in a:
+        aa.axis('off')
+for c in np.unique(model_data.config_num):
     config_filt = emp_agg_df[emp_agg_df.config_num==c]
-    plt.plot(config_filt.start_know, config_filt.task_count,
-             label = "A:%s W:%s D: %s" % (config_filt.avail.iloc[-1],
-                                          config_filt.busy.iloc[-1],
-                                          config_filt.docs.iloc[-1]))
-plt.title('Employee Task Count\n'
+    row = len(avail_arr) - np.where(avail_arr == config_filt.avail.iloc[-1])[0][0] -1
+    col = np.where(busy_arr == config_filt.busy.iloc[-1])[0][0]
+    axis[row][col].stackplot(config_filt.start_know, config_filt.task_value)
+    axis[row][col].axis('on')
+    if row == len(avail_arr)-1:
+        axis[row][col].set_xlabel(str(config_filt.busy.iloc[-1]))
+    if col == 0:
+        axis[row][col].set_ylabel(str(config_filt.avail.iloc[-1]))
+fig.suptitle('Employee Task Value\n'
           + 'Num Emp: ' + str(emp_agg_df.num_emp.iloc[-1])
           + '    Know Cat Ct: ' + str(emp_agg_df.know_cat_ct.iloc[-1])
           + '    Max_Know: ' + str(emp_agg_df.max_know.iloc[-1])
           + '    Innov Rate: ' + str(emp_agg_df.innov_rate.iloc[-1])
           + '    Seed: ' + str(emp_agg_df.seed.iloc[-1]))
-plt.legend()
-plt.xlabel('Start Know Quantity')
-plt.ylabel('Task Count')
+fig.supxlabel('Start Know Quantity\nBusy')
+fig.supylabel('Available\nTask Value')
+h, l = axis[row][col].get_legend_handles_labels()
+fig.legend(h, l)
+fig.tight_layout()
 plt.show()
 
-
-plt.figure(figsize=(10,6))
-plt.grid()
-for c in np.unique(emp_agg_df.config_num):
+avail_arr = np.unique(emp_agg_df.avail)
+busy_arr = np.unique(emp_agg_df.busy)
+fig,axis = plt.subplots(len(avail_arr),
+                        len(busy_arr),
+                        figsize=(10,6), sharex=True,
+                        sharey=True,constrained_layout=True)
+for a in axis:
+    for aa in a:
+        aa.axis('off')
+for c in np.unique(model_data.config_num):
     config_filt = emp_agg_df[emp_agg_df.config_num==c]
-    plt.plot(config_filt.start_know, config_filt.task_count,
-             label = "A:%s W:%s D: %s" % (config_filt.avail.iloc[-1],
-                                          config_filt.busy.iloc[-1],
-                                          config_filt.docs.iloc[-1]))
-plt.title('Employee Task Count\n'
+    row = len(avail_arr) - np.where(avail_arr == config_filt.avail.iloc[-1])[0][0] -1
+    col = np.where(busy_arr == config_filt.busy.iloc[-1])[0][0]
+    axis[row][col].stackplot(config_filt.start_know, config_filt.task_count)
+    axis[row][col].axis('on')
+    if row == len(avail_arr)-1:
+        axis[row][col].set_xlabel(str(config_filt.busy.iloc[-1]))
+    if col == 0:
+        axis[row][col].set_ylabel(str(config_filt.avail.iloc[-1]))
+fig.suptitle('Employee Task Count\n'
           + 'Num Emp: ' + str(emp_agg_df.num_emp.iloc[-1])
           + '    Know Cat Ct: ' + str(emp_agg_df.know_cat_ct.iloc[-1])
           + '    Max_Know: ' + str(emp_agg_df.max_know.iloc[-1])
           + '    Innov Rate: ' + str(emp_agg_df.innov_rate.iloc[-1])
           + '    Seed: ' + str(emp_agg_df.seed.iloc[-1]))
-plt.legend()
-plt.xlabel('Start Know Quantity')
-plt.ylabel('Task Count')
+fig.supxlabel('Start Know Quantity\nBusy')
+fig.supylabel('Available\nTask Count')
+h, l = axis[row][col].get_legend_handles_labels()
+fig.legend(h, l)
+fig.tight_layout()
 plt.show()
+
+
+# plt.figure(figsize=(10,6))
+# plt.grid()
+# for c in np.unique(emp_agg_df.config_num):
+#     config_filt = emp_agg_df[emp_agg_df.config_num==c]
+#     plt.plot(config_filt.start_know, config_filt.know_growth,
+#              label = "A:%s W:%s D: %s" % (config_filt.avail.iloc[-1],
+#                                           config_filt.busy.iloc[-1],
+#                                           config_filt.docs.iloc[-1]))
+# plt.title('Employee Knowledge Growth\n'
+#           + 'Num Emp: ' + str(emp_agg_df.num_emp.iloc[-1])
+#           + '    Know Cat Ct: ' + str(emp_agg_df.know_cat_ct.iloc[-1])
+#           + '    Max_Know: ' + str(emp_agg_df.max_know.iloc[-1])
+#           + '    Innov Rate: ' + str(emp_agg_df.innov_rate.iloc[-1])
+#           + '    Seed: ' + str(emp_agg_df.seed.iloc[-1]))
+# plt.legend(bbox_to_anchor =(1, 1.15))
+# plt.xlabel('Start Know Quantity')
+# plt.ylabel('Know Growth Quantity')
+# plt.show()
+
+# plt.figure(figsize=(10,6))
+# plt.grid()
+# for c in np.unique(emp_agg_df.config_num):
+#     config_filt = emp_agg_df[emp_agg_df.config_num==c]
+#     plt.plot(config_filt.start_know, config_filt.task_value,
+#              label = "A:%s W:%s D: %s" % (config_filt.avail.iloc[-1],
+#                                           config_filt.busy.iloc[-1],
+#                                           config_filt.docs.iloc[-1]))
+# plt.title('Employee Task Value\n'
+#           + 'Num Emp: ' + str(emp_agg_df.num_emp.iloc[-1])
+#           + '    Know Cat Ct: ' + str(emp_agg_df.know_cat_ct.iloc[-1])
+#           + '    Max_Know: ' + str(emp_agg_df.max_know.iloc[-1])
+#           + '    Innov Rate: ' + str(emp_agg_df.innov_rate.iloc[-1])
+#           + '    Seed: ' + str(emp_agg_df.seed.iloc[-1]))
+# plt.legend(bbox_to_anchor =(1, 1.15))
+# plt.xlabel('Start Know Quantity')
+# plt.ylabel('Task Value')
+# plt.show()
+
+# plt.figure(figsize=(10,6))
+# plt.grid()
+# for c in np.unique(emp_agg_df.config_num):
+#     config_filt = emp_agg_df[emp_agg_df.config_num==c]
+#     plt.plot(config_filt.start_know, config_filt.task_count,
+#              label = "A:%s W:%s D: %s" % (config_filt.avail.iloc[-1],
+#                                           config_filt.busy.iloc[-1],
+#                                           config_filt.docs.iloc[-1]))
+# plt.title('Employee Task Count\n'
+#           + 'Num Emp: ' + str(emp_agg_df.num_emp.iloc[-1])
+#           + '    Know Cat Ct: ' + str(emp_agg_df.know_cat_ct.iloc[-1])
+#           + '    Max_Know: ' + str(emp_agg_df.max_know.iloc[-1])
+#           + '    Innov Rate: ' + str(emp_agg_df.innov_rate.iloc[-1])
+#           + '    Seed: ' + str(emp_agg_df.seed.iloc[-1]))
+# plt.legend(bbox_to_anchor =(1, 1.15))
+# plt.xlabel('Start Know Quantity')
+# plt.ylabel('Task Count')
+# plt.show()
 
 
 '''
