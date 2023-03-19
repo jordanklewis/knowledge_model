@@ -5,6 +5,7 @@ Created on Tue Dec 27 20:55:49 2022
 @author: Lewis
 """
 from collections import Counter
+import random
 import time
 import mesa
 import numpy as np
@@ -44,7 +45,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         # 1. Employee gains new knowledge
         # 2. Employee completes a task
 
-        # start_time = time.time()
+        self.step_start_time = time.time()
 
         # before starting step, see if employee is eligable for promotion
         self.check_for_promotion() # maybe only promote when a task is completed ???????
@@ -53,7 +54,8 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         if self.task_completed:
             self.get_new_task()
             self.emp_know_pre_task = self.emp_know
-            # self.plot_emp_task()
+            if self.name=='Kiera Rogers':
+                self.plot_emp_task()
             if self.check_for_task_completion():
                 self.task_completed = True
                 print('Task completed with no new knowledge.' +
@@ -139,11 +141,11 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
 
             # find a helpful and available employee for the know_cat starting
             # with the lowest ranking employee
+            # random.shuffle(self.model.schedule._agents)
             for agent in reversed(self.model.schedule.agents):
-                if ((agent.emp_know[know_cat] - self.emp_know[know_cat]) > 1
+            # for agent in (self.model.schedule.agents):    
+                if ((agent.emp_know[know_cat] - self.emp_know[know_cat]) > 0
                     and agent.status == 'avail'):
-
-                    # self.plot_employee_help_know_cat(know_cat, agent)
 
                     # agents can only help one person at a time
                     agent.status = 'Teaching'
@@ -167,13 +169,13 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         # where the knowledge quantity is the least
 
         # this is the know that the employee has that is not in the library
-        # know_diff = self.emp_know - self.model.comp_library
+        know_diff = self.emp_know - self.model.comp_library
 
         # employees can only document knowledge from their current task
         # know_diff = self.task - self.emp_remain_know_to_learn - self.model.comp_library
 
         # employees can only document new knowledge from their current task
-        know_diff = self.emp_know - self.emp_know_pre_task - self.model.comp_library
+        # know_diff = self.emp_know - self.emp_know_pre_task - self.model.comp_library
 
         # if the employee has no know to contribute, do some other activity
         if not know_diff:
@@ -183,6 +185,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         # that are empty
         for know_cat in know_diff.keys():
             if self.model.comp_library[know_cat] == 0:
+                self.status = 'Documenting'
                 self.model.comp_library[know_cat] += 1
                 self.model.comp_library_log.append((self.model.step_num, know_cat))
                 return True
@@ -192,6 +195,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         for i in reversed(self.model.comp_library.most_common()):
             know_cat = i[0]
             if know_diff[know_cat] > 0:
+                self.status = 'Documenting'
                 self.model.comp_library[know_cat] += 1
                 self.model.comp_library_log.append((self.model.step_num, know_cat))
                 return True
@@ -229,7 +233,8 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
             self.research_know_cat(know_cat)
 
         # use this plot to demonstrate research through normal distributions
-        # self.plot_emp_research()
+        if self.name=='Kiera Rogers':
+            self.plot_emp_research()
 
         # add new know to the emp_know
         self.emp_know = self.emp_know + (self.know_cat_research - self.emp_know)
@@ -263,6 +268,8 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         'innov_rate': self.model.innovation_rate,
         'seed': self.model.seed,
         'step': self.model.step_num,
+        'step_dur': round(time.time() - self.step_start_time,9),
+        'step_act': self.status,
         'employee_id': self.emp_id,
         'employee_name': self.name,
         'employee_dept': self.dept,
@@ -308,7 +315,8 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         self.know_cat_research[rand_research.item()] += 1
 
     def get_new_task(self):
-        task_level = int(self.exp * self.model.innovation_rate)
+        # task_level = int(self.exp * self.model.innovation_rate)
+        task_level = int(self.exp**2 / self.model.max_know * self.model.innovation_rate)
         self.emp_know_to_learn = Counter()
         count = 0
         task_time = time.time()
@@ -325,6 +333,9 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
 
         # this while loop generates a new task. If the generated task does not
         # require any new knowledge, then stay in the while loop
+        
+        
+        '''
         while not self.emp_know_to_learn:
             count += 1
             task = np.random.normal(self.model.dept_know[self.dept]['mu'],
@@ -339,15 +350,54 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
             # they need to learn
             self.emp_know_to_learn = self.task - self.emp_know
             self.emp_remain_know_to_learn = self.emp_know_to_learn
+        '''
+        task = np.random.normal(self.model.dept_know[self.dept]['mu'],
+                                   self.model.dept_know[self.dept]['sigma'],
+                                   task_level).astype(int)
+        task %= self.model.know_cat_ct
+        task[task>=self.model.know_cat_ct/2] -= self.model.know_cat_ct
+        task[task<-self.model.know_cat_ct/2] += self.model.know_cat_ct
+        self.task = Counter(task)
 
+        # the difference betwen the employee's task and knowledge is what
+        # they need to learn
+        self.emp_know_to_learn = self.task - self.emp_know
+        self.emp_remain_know_to_learn = self.emp_know_to_learn
+        
+        while not self.emp_know_to_learn:
+            count += 1
+            task_add = np.random.normal(self.model.dept_know[self.dept]['mu'],
+                                       self.model.dept_know[self.dept]['sigma'],
+                                       int(np.ceil(task_level/4))).astype(int)
+            task_add %= self.model.know_cat_ct
+            task_add[task_add>=self.model.know_cat_ct/2] -= self.model.know_cat_ct
+            task_add[task_add<-self.model.know_cat_ct/2] += self.model.know_cat_ct
+            
+            self.task += Counter(task_add)
+            self.emp_know_to_learn = self.task - self.emp_know
+            self.emp_remain_know_to_learn = self.emp_know_to_learn
+            
+        # if len(list(self.emp_know_to_learn.elements())) > self.model.max_know*.3/15/2:
+        #     print("\nEmp Exp: %s" % self.exp)
+        #     print("Task Step Size: %s" % int(self.exp**2/self.model.max_know*
+        #         self.model.innovation_rate))
+        #     print("New Task Attempts: %s" % count)
+        #     print("Task Length: %s" % len(list(self.task)))
+        #     print("Needed Know: %s" % len(list(self.emp_know_to_learn.elements())))
+        
         # assign a task number from the company
         self.emp_task_num = self.model.comp_task_num
         self.task_completed = False
         # increment comp task number so next assigned task has unique number
         self.model.comp_task_num += 1
-        if count > 20:
+        dur = time.time() - task_time
+        # if dur > 0.1:
+        if count > 100:
+            print("\nEmp Exp: %s" % self.exp)
+            print("Task Step Size: %s" % int(self.exp**2/self.model.max_know*
+                self.model.innovation_rate))
             print("New Task Attempts: %s" % count)
-            print("New Task Time Time %.6f" % (time.time() - task_time))
+            print("New Task Time Time %.6f" % (dur))
 class KnowledgeModel(mesa.Model, KnowledgePlots):
     """A model with some number of agents."""
 
@@ -405,7 +455,8 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
             exp = self.get_employee_experience()
 
             # assign employee a department
-            dept = np.random.choice(list(self.dept_know.keys()))
+            # dept = np.random.choice(list(self.dept_know.keys()))
+            dept = list(self.dept_know.keys())[i%4]
 
             # generate employee's knowledge distribution
             know = self.get_employee_knowledge_dist(dept, exp)
@@ -503,6 +554,9 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
 
     def get_employee_knowledge_dist(self, dept, exp):
         start_know = exp + np.random.randint(1,self.max_know/10)
+        
+        # mu can be the dept mu +/- know_cat_ct/8
+        
         know = np.random.normal(self.dept_know[dept]['mu'],
                                 self.dept_know[dept]['sigma'],
                                 start_know).astype(int)
@@ -513,7 +567,7 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
 
     def order_agents_by_know(self):
         # sort agents in the step scheduler by their knowledge levels so that
-        # the most experienced agents can make the first moves in the model
+        # the agents can be easily identified in knowledge order
         know_dict = {i: len(list(agt.emp_know.elements()))
                     for i, agt in enumerate(self.schedule.agents)}
         agent_keys = sorted(know_dict, key=know_dict.get, reverse=True)
@@ -531,7 +585,8 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
         # time investment for employees spending time to write down knowledge.
 
         ob_ratio = 0.02 # corresponds to 1 year obsolecence
-        # ob_ratio = 0.08 # corresponds to 4 year obsolecence
+        ob_ratio = 0.04 # corresponds to 2 year obsolecence
+        ob_ratio = 0.08 # corresponds to 4 year obsolecence
         for log in self.comp_library_log:
             if log[0] < (self.step_num - self.max_know*ob_ratio):
                 self.comp_library[log[1]] -= 1
@@ -541,7 +596,6 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
 
     def step(self):
         """Advance the model by one step."""
-        #self.datacollector.collect(self)
         self.step_num += 1
         self.order_agents_by_know()
         self.remove_obsolete_library_data()
