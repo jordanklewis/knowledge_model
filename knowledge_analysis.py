@@ -13,12 +13,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-data_path = "C:\\Users\\Lewis\\OneDrive\\Documents\\Stevens Masters\\sys800\\knowledge_model\\data"
-data_file = "20230318_093146_NumEmp20_Steps3750_Grid5_Seed0.csv"
+data_path = "C:\\Users\\Lewis\\Documents\\data"
+data_file = "complete_20230327_232139_NumEmp40_Steps3750_Grid5_Seed0_random_library.csv"
 data_file = os.path.join(data_path, data_file)
 model_data = pd.read_csv(data_file)
 
 steps = max(model_data.step)+1
+num_emp = max(model_data.num_emp)
 
 comp_task_value = {}
 for c in np.unique(model_data.config_num):
@@ -221,16 +222,25 @@ for c in np.unique(model_data.config_num):
     emp_agg_df = pd.concat([emp_agg_df, model_agg], ignore_index=True)
 
 avail_arr = np.unique(emp_agg_df.avail)
+avail_arr = avail_arr[avail_arr%10==0]
 busy_arr = np.unique(emp_agg_df.busy)
+busy_arr = busy_arr[busy_arr%10==0]
 fig,axis = plt.subplots(len(avail_arr),
                         len(busy_arr),
                         figsize=(15,9), sharex=True,
                         sharey=True,constrained_layout=True)
-for a in axis:
-    for aa in a:
-        aa.axis('off')
+for row in range(len(avail_arr)):
+    for col in range(len(busy_arr)):
+        axis[row][col].axis('off')
+        if row == len(avail_arr)-1:
+            axis[row][col].set_xlabel(busy_arr[col])
+        if col == 0:
+            axis[row][col].set_ylabel(avail_arr[len(busy_arr) - row - 1])
 for c in np.unique(model_data.config_num):
     config_filt = emp_agg_df[emp_agg_df.config_num==c]
+    if not (np.any(avail_arr == config_filt.avail.iloc[-1]) &
+            np.any(busy_arr == config_filt.busy.iloc[-1])):
+        continue
     row = len(avail_arr) - np.where(avail_arr == config_filt.avail.iloc[-1])[0][0] -1
     col = np.where(busy_arr == config_filt.busy.iloc[-1])[0][0]
     axis[row][col].stackplot(config_filt.start_know, config_filt.research_know,
@@ -241,6 +251,13 @@ for c in np.unique(model_data.config_num):
         axis[row][col].set_xlabel(str(config_filt.busy.iloc[-1]))
     if col == 0:
         axis[row][col].set_ylabel(str(config_filt.avail.iloc[-1]))
+        
+    for r in np.where(avail_arr < config_filt.avail.iloc[-1])[0]:
+        for c in np.where(busy_arr < config_filt.busy.iloc[-1])[0]:
+            row = len(avail_arr) - r - 1
+            col = c
+            axis[row][col].axis('on')
+            
 fig.suptitle('Employee Knowledge Source\n'
           + 'Num Emp: ' + str(emp_agg_df.num_emp.iloc[-1])
           + '    Know Cat Ct: ' + str(emp_agg_df.know_cat_ct.iloc[-1])
@@ -255,16 +272,27 @@ fig.tight_layout()
 plt.show()
 
 avail_arr = np.unique(emp_agg_df.avail)
+avail_arr = avail_arr[avail_arr%10==0]
 busy_arr = np.unique(emp_agg_df.busy)
+busy_arr = busy_arr[busy_arr%10==0]
 fig,axis = plt.subplots(len(avail_arr),
                         len(busy_arr),
                         figsize=(15,9), sharex=True,
                         sharey=True,constrained_layout=True)
-for a in axis:
-    for aa in a:
-        aa.axis('off')
+
+for row in range(len(avail_arr)):
+    for col in range(len(busy_arr)):
+        axis[row][col].axis('off')
+        if row == len(avail_arr)-1:
+            axis[row][col].set_xlabel(busy_arr[col])
+        if col == 0:
+            axis[row][col].set_ylabel(avail_arr[len(busy_arr) - row - 1])
+        
 for c in np.unique(model_data.config_num):
     config_filt = emp_agg_df[emp_agg_df.config_num==c]
+    if not (np.any(avail_arr == config_filt.avail.iloc[-1]) &
+            np.any(busy_arr == config_filt.busy.iloc[-1])):
+        continue
     row = len(avail_arr) - np.where(avail_arr == config_filt.avail.iloc[-1])[0][0] -1
     col = np.where(busy_arr == config_filt.busy.iloc[-1])[0][0]
     axis[row][col].stackplot(config_filt.start_know, config_filt.teach_know,
@@ -275,6 +303,13 @@ for c in np.unique(model_data.config_num):
         axis[row][col].set_xlabel(str(config_filt.busy.iloc[-1]))
     if col == 0:
         axis[row][col].set_ylabel(str(config_filt.avail.iloc[-1]))
+
+    for r in np.where(avail_arr < config_filt.avail.iloc[-1])[0]:
+        for c in np.where(busy_arr < config_filt.busy.iloc[-1])[0]:
+            row = len(avail_arr) - r - 1
+            col = c
+            axis[row][col].axis('on')
+
 fig.suptitle('Employee Knowledge Transfer Method\n'
           + 'Num Emp: ' + str(emp_agg_df.num_emp.iloc[-1])
           + '    Know Cat Ct: ' + str(emp_agg_df.know_cat_ct.iloc[-1])
@@ -288,18 +323,26 @@ fig.legend(h, l)
 fig.tight_layout()
 plt.show()
 
-
 avail_arr = np.unique(emp_agg_df.avail)
+avail_arr = avail_arr[avail_arr%10==0]
 busy_arr = np.unique(emp_agg_df.busy)
+busy_arr = busy_arr[busy_arr%10==0]
 fig,axis = plt.subplots(len(avail_arr),
                         len(busy_arr),
                         figsize=(15,9), sharex=True,
                         sharey=True,constrained_layout=True)
-for a in axis:
-    for aa in a:
-        aa.axis('off')
+for row in range(len(avail_arr)):
+    for col in range(len(busy_arr)):
+        axis[row][col].axis('off')
+        if row == len(avail_arr)-1:
+            axis[row][col].set_xlabel(busy_arr[col])
+        if col == 0:
+            axis[row][col].set_ylabel(avail_arr[len(busy_arr) - row - 1])
 for c in np.unique(model_data.config_num):
     config_filt = emp_agg_df[emp_agg_df.config_num==c]
+    if not (np.any(avail_arr == config_filt.avail.iloc[-1]) &
+            np.any(busy_arr == config_filt.busy.iloc[-1])):
+        continue
     row = len(avail_arr) - np.where(avail_arr == config_filt.avail.iloc[-1])[0][0] -1
     col = np.where(busy_arr == config_filt.busy.iloc[-1])[0][0]
     axis[row][col].stackplot(config_filt.start_know, config_filt.task_value)
@@ -308,6 +351,13 @@ for c in np.unique(model_data.config_num):
         axis[row][col].set_xlabel(str(config_filt.busy.iloc[-1]))
     if col == 0:
         axis[row][col].set_ylabel(str(config_filt.avail.iloc[-1]))
+
+    for r in np.where(avail_arr < config_filt.avail.iloc[-1])[0]:
+        for c in np.where(busy_arr < config_filt.busy.iloc[-1])[0]:
+            row = len(avail_arr) - r - 1
+            col = c
+            axis[row][col].axis('on')
+                
 fig.suptitle('Employee Task Value\n'
           + 'Num Emp: ' + str(emp_agg_df.num_emp.iloc[-1])
           + '    Know Cat Ct: ' + str(emp_agg_df.know_cat_ct.iloc[-1])
@@ -322,16 +372,25 @@ fig.tight_layout()
 plt.show()
 
 avail_arr = np.unique(emp_agg_df.avail)
+avail_arr = avail_arr[avail_arr%10==0]
 busy_arr = np.unique(emp_agg_df.busy)
+busy_arr = busy_arr[busy_arr%10==0]
 fig,axis = plt.subplots(len(avail_arr),
                         len(busy_arr),
                         figsize=(15,9), sharex=True,
                         sharey=True,constrained_layout=True)
-for a in axis:
-    for aa in a:
-        aa.axis('off')
+for row in range(len(avail_arr)):
+    for col in range(len(busy_arr)):
+        axis[row][col].axis('off')
+        if row == len(avail_arr)-1:
+            axis[row][col].set_xlabel(busy_arr[col])
+        if col == 0:
+            axis[row][col].set_ylabel(avail_arr[len(busy_arr) - row - 1])
 for c in np.unique(model_data.config_num):
     config_filt = emp_agg_df[emp_agg_df.config_num==c]
+    if not (np.any(avail_arr == config_filt.avail.iloc[-1]) &
+            np.any(busy_arr == config_filt.busy.iloc[-1])):
+        continue
     row = len(avail_arr) - np.where(avail_arr == config_filt.avail.iloc[-1])[0][0] -1
     col = np.where(busy_arr == config_filt.busy.iloc[-1])[0][0]
     axis[row][col].stackplot(config_filt.start_know, config_filt.task_count)
@@ -340,6 +399,13 @@ for c in np.unique(model_data.config_num):
         axis[row][col].set_xlabel(str(config_filt.busy.iloc[-1]))
     if col == 0:
         axis[row][col].set_ylabel(str(config_filt.avail.iloc[-1]))
+
+    for r in np.where(avail_arr < config_filt.avail.iloc[-1])[0]:
+        for c in np.where(busy_arr < config_filt.busy.iloc[-1])[0]:
+            row = len(avail_arr) - r - 1
+            col = c
+            axis[row][col].axis('on')
+                
 fig.suptitle('Employee Task Count\n'
           + 'Num Emp: ' + str(emp_agg_df.num_emp.iloc[-1])
           + '    Know Cat Ct: ' + str(emp_agg_df.know_cat_ct.iloc[-1])
@@ -367,54 +433,19 @@ plt.title('Employee Task Difficulty\n'
           + '    Seed: ' + str(model_data.seed.iloc[-1]))
 plt.show()
 
-
-# create a step aggregate data frame
-step_agg_df = pd.DataFrame([])
-for c in np.unique(model_data.config_num):
-    model_agg = []
-    for s in np.unique(model_data.step):
-        model_data_step = model_data[(model_data.step==s) &
-                                    (model_data.config_num==c)]
-        model_agg.append({'config_num': c,
-                          'step': s,
-                          'num_emp': model_data_step.num_emp.iloc[-1],
-                          'avail': model_data_step.avail.iloc[-1],
-                          'busy': model_data_step.busy.iloc[-1],
-                          'docs': model_data_step.docs.iloc[-1],
-                          'know_cat_ct': model_data_step.know_cat_ct.iloc[-1],
-                          'max_know': model_data_step.max_know.iloc[-1],
-                          'innov_rate': model_data_step.innov_rate.iloc[-1],
-                          'seed': model_data_step.seed.iloc[-1],
-                          'task_count': model_data_step.task_completed.sum(),
-                          'task_value': model_data_step.task_complexity[model_data_step.task_completed].sum(),
-                          'research_know': model_data_step.research_know.iloc[-1],
-                          'learn_know': model_data_step.learn_know.iloc[-1],
-                          'teach_know': model_data_step.teach_know.iloc[-1],
-                          'doc_know': model_data_step.document_know.iloc[-1],
-                          'read_know': model_data_step.read_know.iloc[-1],
-                          'SE_dept_know': model_data_step.SE_dept_know.iloc[-1],
-                          'SW_dept_know': model_data_step.SW_dept_know.iloc[-1],
-                          'EE_dept_know': model_data_step.EE_dept_know.iloc[-1],
-                          'ME_dept_know': model_data_step.ME_dept_know.iloc[-1],
-                          'comp_lib_know': model_data_step.comp_lib_know.iloc[-1],
-                          'comp_know': model_data_step.comp_know.iloc[-1]
-                          })
-    model_agg = pd.DataFrame(model_agg)
-    step_agg_df = pd.concat([step_agg_df, model_agg], ignore_index=True)
-
 plt.figure(figsize=(10,6))
 plt.grid()
-for c in np.unique(step_agg_df.config_num):
-    config_filt = step_agg_df[step_agg_df.config_num==c]
+for c in np.unique(model_data.config_num):
+    config_filt = model_data[model_data.config_num==c]
     if config_filt.busy.iloc[-1] == 0.2:
         plt.plot(config_filt.step, config_filt.comp_lib_know,
-                 label="Doc Pct: %s" % (config_filt.docs.iloc[-1]))
+                 label="Doc Pct: %s" % (int(config_filt.docs.iloc[-1]*100)))
 plt.title('Company Library Knowledge\n'
-          + 'Num Emp: ' + str(step_agg_df.num_emp.iloc[-1])
-          + '    Know Cat Ct: ' + str(step_agg_df.know_cat_ct.iloc[-1])
-          + '    Max_Know: ' + str(step_agg_df.max_know.iloc[-1])
-          + '    Innov Rate: ' + str(step_agg_df.innov_rate.iloc[-1])
-          + '    Seed: ' + str(step_agg_df.seed.iloc[-1]))
+          + 'Num Emp: ' + str(model_data.num_emp.iloc[-1])
+          + '    Know Cat Ct: ' + str(model_data.know_cat_ct.iloc[-1])
+          + '    Max_Know: ' + str(model_data.max_know.iloc[-1])
+          + '    Innov Rate: ' + str(model_data.innov_rate.iloc[-1])
+          + '    Seed: ' + str(model_data.seed.iloc[-1]))
 # plt.legend(loc='outside right')
 # if c < 20:
 plt.legend(bbox_to_anchor =(1, 1.15))
@@ -423,8 +454,8 @@ plt.ylabel('Knowledge Quantity')
 plt.show()
 
 growth = []
-for c in np.unique(step_agg_df.config_num):
-    config_filt = step_agg_df[step_agg_df.config_num==c]
+for c in np.unique(model_data.config_num):
+    config_filt = model_data[model_data.config_num==c]
     growth.append({"config_num": config_filt.config_num.iloc[-1],
                     "avail": config_filt.avail.iloc[-1],
                     "busy": config_filt.busy.iloc[-1],
@@ -531,7 +562,7 @@ ax = sns.heatmap(comp_know, annot=False, fmt='.0f', cmap='coolwarm', robust=True
 ax.invert_yaxis()
 plt.xlabel('Busy')
 plt.ylabel('Available')
-plt.title('Orgainzational Knowledge\n'
+plt.title('Orgainzational Knowledge Growth\n'
           + 'Num Emp: ' + str(model_data.num_emp.iloc[-1])
           + '    Know Cat Ct: ' + str(model_data.know_cat_ct.iloc[-1])
           + '    Max_Know: ' + str(model_data.max_know.iloc[-1])

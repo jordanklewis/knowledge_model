@@ -41,21 +41,20 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         self.know_cat_research = Counter()
 
     def step(self):
-        # the end of a step is initaited by
-        # 1. Employee gains new knowledge
-        # 2. Employee completes a task
+        # the end of a step is initaited when Employee gains new knowledge
 
         self.step_start_time = time.time()
 
         # before starting step, see if employee is eligable for promotion
-        self.check_for_promotion() # maybe only promote when a task is completed ???????
+        self.check_for_promotion()
 
         # if a current task is not assigned, then assign one
         if self.task_completed:
             self.get_new_task()
             self.emp_know_pre_task = self.emp_know
-            if self.name=='Kiera Rogers':
-                self.plot_emp_task()
+            # if self.name=='Kiera Rogers':
+            #     self.plot_emp_task()
+            # self.plot_emp_task()
             if self.check_for_task_completion():
                 self.task_completed = True
                 print('Task completed with no new knowledge.' +
@@ -180,29 +179,35 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         # if the employee has no know to contribute, do some other activity
         if not know_diff:
             return False
+        
+        know_cat = random.choice(list(know_diff.keys()))
+        self.status = 'Documenting'
+        self.model.comp_library[know_cat] += 1
+        self.model.comp_library_log.append((self.model.step_num, know_cat))
+        return True
 
-        # Iter through know_diff know_cats and add to the library for any know_cats
-        # that are empty
-        for know_cat in know_diff.keys():
-            if self.model.comp_library[know_cat] == 0:
-                self.status = 'Documenting'
-                self.model.comp_library[know_cat] += 1
-                self.model.comp_library_log.append((self.model.step_num, know_cat))
-                return True
+        # # Iter through know_diff know_cats and add to the library for any know_cats
+        # # that are empty
+        # for know_cat in know_diff.keys():
+        #     if self.model.comp_library[know_cat] == 0:
+        #         self.status = 'Documenting'
+        #         self.model.comp_library[know_cat] += 1
+        #         self.model.comp_library_log.append((self.model.step_num, know_cat))
+        #         return True
 
-        # if there is at least some knowledge in every know_cat, then add know
-        # to the know_cat that has the least know
-        for i in reversed(self.model.comp_library.most_common()):
-            know_cat = i[0]
-            if know_diff[know_cat] > 0:
-                self.status = 'Documenting'
-                self.model.comp_library[know_cat] += 1
-                self.model.comp_library_log.append((self.model.step_num, know_cat))
-                return True
+        # # if there is at least some knowledge in every know_cat, then add know
+        # # to the know_cat that has the least know
+        # for i in reversed(self.model.comp_library.most_common()):
+        #     know_cat = i[0]
+        #     if know_diff[know_cat] > 0:
+        #         self.status = 'Documenting'
+        #         self.model.comp_library[know_cat] += 1
+        #         self.model.comp_library_log.append((self.model.step_num, know_cat))
+        #         return True
 
-        # it shouldn't be possible to reach this point
-        print('Something went wrong in document_know() logic')
-        return False
+        # # it shouldn't be possible to reach this point
+        # print('Something went wrong in document_know() logic')
+        # return False
 
     def update_company_and_dept_know(self):
         new_dept_know = self.task - self.model.dept_know[self.dept]['dist']
@@ -233,8 +238,8 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
             self.research_know_cat(know_cat)
 
         # use this plot to demonstrate research through normal distributions
-        if self.name=='Kiera Rogers':
-            self.plot_emp_research()
+        # if self.name=='Kiera Rogers':
+        #     self.plot_emp_research()
 
         # add new know to the emp_know
         self.emp_know = self.emp_know + (self.know_cat_research - self.emp_know)

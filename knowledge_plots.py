@@ -220,7 +220,7 @@ class KnowledgePlots():
         plt.figure(figsize=(10,6))
         plt.bar(self.comp_library.keys(),
                 self.comp_library.values(),
-                color='blue', alpha =0.25, label='Library Know', width=1)
+                color='blue', alpha =0.25, label='Library Know')
         plt.step(self.know_cats,
                  [self.comp_know[n] for n in self.know_cats],
                   'k--', alpha =1, label='Company Know', where='mid')

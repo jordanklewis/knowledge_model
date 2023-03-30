@@ -62,14 +62,14 @@ from knowledge_model import KnowledgeModel
 # seed=0
 # grid_res = 10
 
-num_emp=20
+num_emp=40
 steps = 3750
 innov_rate=0.5
 seed=0
 grid_res = 5
 
 total_time = time.time()
-data_path = "C:\\Users\\Lewis\\OneDrive\\Documents\\Stevens Masters\\sys800\\knowledge_model\\data"
+data_path = "C:\\Users\\Lewis\\Documents\\data"
 data_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 file_info = "NumEmp%s_Steps%s_Grid%s_Seed%s" % (num_emp, steps, grid_res, seed)
 data_file = os.path.join(data_path, data_time+'_'+file_info+'.csv')
@@ -121,7 +121,7 @@ for i in range(20, 105, grid_res):
             # start_time = time.time()
             model.step()
             
-            if (s % 50 == 0) & (s > 0):
+            if (s % 25 == 0) & (s > 0):
                 pct_comp = (config_num*steps+s+1)/total_steps
                 elap_time = time.time() - t_time
                 remain_time = (1-pct_comp)*elap_time/pct_comp
@@ -143,6 +143,11 @@ for i in range(20, 105, grid_res):
 
 # model_data = pd.DataFrame(model_data)
 print("%.2f Sec Total Time" % (time.time() - total_time))
+
+# insert 'complete' to the beginning to mark the csv data as a complete simulation
+complete_data_file = os.path.join(data_path, 'complete_'+data_time+'_'+file_info+'.csv')
+os.rename(data_file, complete_data_file)
+
 
 model.plot_company_know()
 model.plot_company_know_subplots()
