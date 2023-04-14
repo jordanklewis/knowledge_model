@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 class KnowledgePlots():
+    """"Library of plots used to visualize the knowledge_model internal workings"""
 
     def plot_emp_help_know_cat(self, know_cat, agent):
         # verification plot to demonstrate that the chosen employee has

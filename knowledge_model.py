@@ -5,7 +5,6 @@ Created on Tue Dec 27 20:55:49 2022
 @author: Lewis
 """
 from collections import Counter
-import random
 import time
 import mesa
 import numpy as np
@@ -13,7 +12,7 @@ import pandas as pd
 from knowledge_plots import KnowledgePlots
 
 class EmployeeAgent(mesa.Agent, KnowledgePlots):
-    """An agent with fixed initial wealth."""
+    """An employee at the company with some knowledge trying to complete tasks."""
 
     def __init__(self, unique_id, exp, name, dept, know, model):
         super().__init__(unique_id, model)
@@ -31,18 +30,16 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         self.document_know_ct = 0
         self.model = model
         self.task_completed = True
-        # Status: avail, Teaching, Learning, docs, Reading, Researching
-        # Coworker: Name, None
         self.status = 'avail'
         self.coworker = 'None'
         self.task = Counter()
         self.emp_know_to_learn = Counter()
         self.emp_remain_know_to_learn = Counter()
         self.know_cat_research = Counter()
+        self.step_start_time = 0
 
     def step(self):
         # the end of a step is initaited when Employee gains new knowledge
-
         self.step_start_time = time.time()
 
         # before starting step, see if employee is eligable for promotion
@@ -67,7 +64,6 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
             if self.document_know():
                 self.document_know_ct += 1
                 self.log_step_data() # if success, log data and exit step
-                # print("%s docs" % int((time.time() - start_time)*1000))
                 return
             # if the agent has nothing to document, they should work on their task
             # Set status back to avail
@@ -75,7 +71,6 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
 
         # agent must be available to continue step
         if (self.status != 'avail') & (self.status != 'busy'):
-            # print("%s Helping" % int((time.time() - start_time)*1000))
             self.log_step_data()
             return
 
@@ -85,7 +80,6 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
             if self.check_for_task_completion():
                 self.update_company_and_dept_know()
             self.log_step_data()
-            # print("%s Reading" % int((time.time() - start_time)*1000))
             return
 
         # Search for help on tasks so they can be finished quicker
@@ -93,7 +87,6 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
             if self.check_for_task_completion():
                 self.update_company_and_dept_know()
             self.log_step_data()
-            # print("%s Learning" % int((time.time() - start_time)*1000))
             return
 
         # if no help is currently availalbe, they should research the low hanging fruit
@@ -102,7 +95,6 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         if self.check_for_task_completion():
             self.update_company_and_dept_know()
         self.log_step_data()
-        # print("%s Researching" % int((time.time() - start_time)*1000))
 
     def check_comp_library(self):
         # first loop through all remaining know to learn ordering from most
@@ -142,7 +134,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
             # with the lowest ranking employee
             # random.shuffle(self.model.schedule._agents)
             for agent in reversed(self.model.schedule.agents):
-            # for agent in (self.model.schedule.agents):    
+            # for agent in (self.model.schedule.agents):
                 if ((agent.emp_know[know_cat] - self.emp_know[know_cat]) > 0
                     and agent.status == 'avail'):
 
@@ -170,44 +162,32 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         # this is the know that the employee has that is not in the library
         know_diff = self.emp_know - self.model.comp_library
 
-        # employees can only document knowledge from their current task
-        # know_diff = self.task - self.emp_remain_know_to_learn - self.model.comp_library
-
-        # employees can only document new knowledge from their current task
-        # know_diff = self.emp_know - self.emp_know_pre_task - self.model.comp_library
-
         # if the employee has no know to contribute, do some other activity
         if not know_diff:
             return False
-        
-        know_cat = random.choice(list(know_diff.keys()))
-        self.status = 'Documenting'
-        self.model.comp_library[know_cat] += 1
-        self.model.comp_library_log.append((self.model.step_num, know_cat))
-        return True
 
-        # # Iter through know_diff know_cats and add to the library for any know_cats
-        # # that are empty
-        # for know_cat in know_diff.keys():
-        #     if self.model.comp_library[know_cat] == 0:
-        #         self.status = 'Documenting'
-        #         self.model.comp_library[know_cat] += 1
-        #         self.model.comp_library_log.append((self.model.step_num, know_cat))
-        #         return True
+        # Iter through know_diff know_cats and add to the library for any know_cats
+        # that are empty
+        for know_cat in know_diff.keys():
+            if self.model.comp_library[know_cat] == 0:
+                self.status = 'Documenting'
+                self.model.comp_library[know_cat] += 1
+                self.model.comp_library_log.append((self.model.step_num, know_cat))
+                return True
 
-        # # if there is at least some knowledge in every know_cat, then add know
-        # # to the know_cat that has the least know
-        # for i in reversed(self.model.comp_library.most_common()):
-        #     know_cat = i[0]
-        #     if know_diff[know_cat] > 0:
-        #         self.status = 'Documenting'
-        #         self.model.comp_library[know_cat] += 1
-        #         self.model.comp_library_log.append((self.model.step_num, know_cat))
-        #         return True
+        # if there is at least some knowledge in every know_cat, then add know
+        # to the know_cat that has the least know
+        for i in reversed(self.model.comp_library.most_common()):
+            know_cat = i[0]
+            if know_diff[know_cat] > 0:
+                self.status = 'Documenting'
+                self.model.comp_library[know_cat] += 1
+                self.model.comp_library_log.append((self.model.step_num, know_cat))
+                return True
 
-        # # it shouldn't be possible to reach this point
-        # print('Something went wrong in document_know() logic')
-        # return False
+        # it shouldn't be possible to reach this point
+        print('Something went wrong in document_know() logic')
+        return False
 
     def update_company_and_dept_know(self):
         new_dept_know = self.task - self.model.dept_know[self.dept]['dist']
@@ -237,10 +217,6 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         while not self.know_cat_research - self.emp_know:
             self.research_know_cat(know_cat)
 
-        # use this plot to demonstrate research through normal distributions
-        # if self.name=='Kiera Rogers':
-        #     self.plot_emp_research()
-
         # add new know to the emp_know
         self.emp_know = self.emp_know + (self.know_cat_research - self.emp_know)
 
@@ -257,7 +233,6 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
             self.task_completed = False
             return False
         # otherwise, the task has been completed
-        # self.plot_emp_know_post_task()
         self.task_completed = True
         return True
 
@@ -306,12 +281,6 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         # learning to a deisred level is not a linear path. This is simulated as a
         # normal distribution of knowledge centered around the target knowledge
         mu_research = cat
-        # sigma 5 = 1:3 ratio
-        #     with sigma 5, helping others is more company productive
-        # sigma 3 = 1:2.25 ratio
-        # sigma 2 = 1:2 ratio
-        #     with sigma 2, researching on your own is more productive
-        # sigma 1 = 1:0.7 ratio
         sigma_research = 5
         rand_research = np.random.normal(mu_research, sigma_research, 1).astype(int)
         rand_research %= self.model.know_cat_ct
@@ -324,7 +293,6 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         task_level = int(self.exp**2 / self.model.max_know * self.model.innovation_rate)
         self.emp_know_to_learn = Counter()
         count = 0
-        task_time = time.time()
         # There is no such thing as a mindless job in 2023
         # Employees should not be assigned a task where ZERO new knowledge
         # is required to complete the task. If an employee's job scope is so
@@ -338,24 +306,7 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
 
         # this while loop generates a new task. If the generated task does not
         # require any new knowledge, then stay in the while loop
-        
-        
-        '''
-        while not self.emp_know_to_learn:
-            count += 1
-            task = np.random.normal(self.model.dept_know[self.dept]['mu'],
-                                       self.model.dept_know[self.dept]['sigma'],
-                                       task_level).astype(int)
-            task %= self.model.know_cat_ct
-            task[task>=self.model.know_cat_ct/2] -= self.model.know_cat_ct
-            task[task<-self.model.know_cat_ct/2] += self.model.know_cat_ct
-            self.task = Counter(task)
 
-            # the difference betwen the employee's task and knowledge is what
-            # they need to learn
-            self.emp_know_to_learn = self.task - self.emp_know
-            self.emp_remain_know_to_learn = self.emp_know_to_learn
-        '''
         task = np.random.normal(self.model.dept_know[self.dept]['mu'],
                                    self.model.dept_know[self.dept]['sigma'],
                                    task_level).astype(int)
@@ -368,7 +319,10 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
         # they need to learn
         self.emp_know_to_learn = self.task - self.emp_know
         self.emp_remain_know_to_learn = self.emp_know_to_learn
-        
+
+        # If the generated task does not require any new knowledge, then stay
+        # add another 25% of task level to the task until the task requires
+        # new knowledge to be discovered.
         while not self.emp_know_to_learn:
             count += 1
             task_add = np.random.normal(self.model.dept_know[self.dept]['mu'],
@@ -377,32 +331,17 @@ class EmployeeAgent(mesa.Agent, KnowledgePlots):
             task_add %= self.model.know_cat_ct
             task_add[task_add>=self.model.know_cat_ct/2] -= self.model.know_cat_ct
             task_add[task_add<-self.model.know_cat_ct/2] += self.model.know_cat_ct
-            
+
             self.task += Counter(task_add)
             self.emp_know_to_learn = self.task - self.emp_know
             self.emp_remain_know_to_learn = self.emp_know_to_learn
-            
-        # if len(list(self.emp_know_to_learn.elements())) > self.model.max_know*.3/15/2:
-        #     print("\nEmp Exp: %s" % self.exp)
-        #     print("Task Step Size: %s" % int(self.exp**2/self.model.max_know*
-        #         self.model.innovation_rate))
-        #     print("New Task Attempts: %s" % count)
-        #     print("Task Length: %s" % len(list(self.task)))
-        #     print("Needed Know: %s" % len(list(self.emp_know_to_learn.elements())))
-        
+
         # assign a task number from the company
         self.emp_task_num = self.model.comp_task_num
         self.task_completed = False
         # increment comp task number so next assigned task has unique number
         self.model.comp_task_num += 1
-        dur = time.time() - task_time
-        # if dur > 0.1:
-        if count > 100:
-            print("\nEmp Exp: %s" % self.exp)
-            print("Task Step Size: %s" % int(self.exp**2/self.model.max_know*
-                self.model.innovation_rate))
-            print("New Task Attempts: %s" % count)
-            print("New Task Time Time %.6f" % (dur))
+
 class KnowledgeModel(mesa.Model, KnowledgePlots):
     """A model with some number of agents."""
 
@@ -440,7 +379,6 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
 
         # model parameters
         self.schedule = mesa.time.RandomActivation(self)
-        # self.schedule = mesa.time.BaseScheduler(self)
         self.running = True
         self.step_data = []
 
@@ -559,9 +497,6 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
 
     def get_employee_knowledge_dist(self, dept, exp):
         start_know = exp + np.random.randint(1,self.max_know/10)
-        
-        # mu can be the dept mu +/- know_cat_ct/8
-        
         know = np.random.normal(self.dept_know[dept]['mu'],
                                 self.dept_know[dept]['sigma'],
                                 start_know).astype(int)
@@ -586,11 +521,10 @@ class KnowledgeModel(mesa.Model, KnowledgePlots):
         # added to the library before it becomes obsolete. As more knowledege
         # is documented, employees helping eachother becomes less effective
         # because employees can rely on the library for more efficient knowledge
-        # transfer. The efficiency of library knowledge transfer outweighs the
-        # time investment for employees spending time to write down knowledge.
+        # transfer. The efficiency of acquiring knowledge from the library
+        # outweighs the time investment for employees spending time to write
+        # down knowledge.
 
-        ob_ratio = 0.02 # corresponds to 1 year obsolecence
-        ob_ratio = 0.04 # corresponds to 2 year obsolecence
         ob_ratio = 0.08 # corresponds to 4 year obsolecence
         for log in self.comp_library_log:
             if log[0] < (self.step_num - self.max_know*ob_ratio):
