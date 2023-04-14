@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 class KnowledgePlots():
+    """"Library of plots used to visualize the knowledge_model internal workings"""
 
     def plot_emp_help_know_cat(self, know_cat, agent):
         # verification plot to demonstrate that the chosen employee has
@@ -154,10 +155,11 @@ class KnowledgePlots():
         plt.bar(self.emp_know_pre_task.keys(),
                 self.emp_know_pre_task.values(),
                 color='blue', alpha =0.25, label='Know Pre Task')
-        plt.bar(emp_know_gain.keys(),
-                emp_know_gain.values(),
-                 color='blue', alpha =0.75, label='Know Gain',
-                 bottom=[self.emp_know_pre_task[n] for n in emp_know_gain.keys()])
+        if emp_know_gain:
+            plt.bar(emp_know_gain.keys(),
+                    emp_know_gain.values(),
+                     color='blue', alpha =0.75, label='Know Gain',
+                     bottom=[self.emp_know_pre_task[n] for n in emp_know_gain.keys()])
         plt.bar(self.emp_remain_know_to_learn.keys(),
                 self.emp_remain_know_to_learn.values(),
                  color='red', alpha =1, label='Needed Know',
@@ -182,10 +184,35 @@ class KnowledgePlots():
         plt.title(self.name + ' [' + self.dept
                   + ' Exp: ' + str(self.exp) + ']'
                   + '    Total Knowledge: ' + str(len(list(self.emp_know.elements()))) + '\n'
-                  + 'Step: ' + str(self.model.step_num)
-                  + '    Task Number: ' + str(self.emp_task_num)
-                  + '    Needed Knowledge: ' + str(len(list(self.emp_know_to_learn.elements())))
-                  + '    Knowledge Gain: ' + str(len(list(emp_know_gain.elements()))))
+                  + 'Task Number: ' + str(self.emp_task_num)
+                  + '    Task Difficulty: ' + str(len(list(self.task.elements())))
+                  + '    Needed Knowledge: ' + str(len(list(self.emp_know_to_learn.elements()))))
+        plt.xlabel('Knowledge Categories')
+        plt.ylabel('Knowledge Quantity')
+        plt.show()
+        
+    def plot_emp_know(self):
+        plt.figure(figsize=(10,6))
+        plt.bar(self.emp_know.keys(),
+                self.emp_know.values(),
+                color='blue', alpha =0.25, label='Emp Know')
+        plt.step(self.model.know_cats,
+         [self.model.comp_know[n] for n in self.model.know_cats],
+          'k--', alpha =1, label='Company', where='mid')
+        plt.step(self.model.know_cats,
+                 [self.model.dept_know[self.dept]['dist'][n] for n in self.model.know_cats],
+                  'g', alpha =1, label=str(self.dept)+' Dept', where='mid')
+        plt.legend()
+        plt.xlim([min(self.model.know_cats)-0.5, max(self.model.know_cats)+0.5])
+        plt.minorticks_on()
+        plt.xticks(np.arange(min(self.model.know_cats),
+                             max(self.model.know_cats)+1,
+                             self.model.know_cat_ct/20))
+        plt.tick_params(axis='x', which='minor', length=5, width=1)
+        plt.tick_params(axis='x', which='major', length=7, width=2)
+        plt.title(self.name + ' [' + self.dept
+                  + ' Exp: ' + str(self.exp) + ']'
+                  + '    Total Knowledge: ' + str(len(list(self.emp_know.elements()))))
         plt.xlabel('Knowledge Categories')
         plt.ylabel('Knowledge Quantity')
         plt.show()
@@ -194,7 +221,7 @@ class KnowledgePlots():
         plt.figure(figsize=(10,6))
         plt.bar(self.comp_library.keys(),
                 self.comp_library.values(),
-                color='blue', alpha =0.25, label='Library Know', width=1)
+                color='blue', alpha =0.25, label='Library Know')
         plt.step(self.know_cats,
                  [self.comp_know[n] for n in self.know_cats],
                   'k--', alpha =1, label='Company Know', where='mid')
@@ -261,10 +288,11 @@ class KnowledgePlots():
         plt.bar(self.emp_know_pre_task.keys(),
                 self.emp_know_pre_task.values(),
                 color='blue', alpha =0.25, label='Know Pre Task')
-        plt.bar(emp_know_gain.keys(),
-                emp_know_gain.values(),
-                 color='blue', alpha =0.75, label='Know Gain',
-                 bottom=[self.emp_know_pre_task[n] for n in emp_know_gain.keys()])
+        if emp_know_gain:
+            plt.bar(emp_know_gain.keys(),
+                    emp_know_gain.values(),
+                     color='blue', alpha =0.75, label='Know Gain',
+                     bottom=[self.emp_know_pre_task[n] for n in emp_know_gain.keys()])
         plt.bar(self.emp_remain_know_to_learn.keys(),
                 self.emp_remain_know_to_learn.values(),
                  color='red', alpha =1, label='Needed Know',
@@ -272,10 +300,11 @@ class KnowledgePlots():
         plt.bar(research.keys(),
                 research.values(),
                 color='black', alpha =0.5, label='Research')
-        plt.bar(breakthrough.keys(),
-                breakthrough.values(),
-                 color='green', alpha =1, label='Breakthrough',
-                 bottom=[research[n] for n in breakthrough.keys()])
+        if breakthrough:
+            plt.bar(breakthrough.keys(),
+                    breakthrough.values(),
+                     color='green', alpha =1, label='Breakthrough',
+                     bottom=[research[n] for n in breakthrough.keys()])
         # plt.step(self.model.know_cats,
         #         [self.task[n] for n in self.model.know_cats],
         #           color='black', alpha=1, label='Task', where='mid')
@@ -362,7 +391,7 @@ class KnowledgePlots():
         plt.minorticks_on()
         plt.xticks(np.arange(min(self.know_cats),
                              max(self.know_cats)+1,
-                             self.know_cat_ct/20))
+                             self.know_cat_ct/10))
         plt.tick_params(axis='x', which='minor', length=5, width=1)
         plt.tick_params(axis='x', which='major', length=7, width=2)
         plt.legend(loc='upper right')
